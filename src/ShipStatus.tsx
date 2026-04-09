@@ -49,9 +49,11 @@ export interface CrewMember {
   type: 'Player' | 'NPC';
   salary: number;
   payrollShare: number;
+  assignedShipId?: string;
 }
 
 export interface ShipData {
+  id: string; // added so we can find ships in the array
   shipName: string;
   shipClass: string;
   hullCurrent: number;
@@ -104,15 +106,23 @@ export interface ShipData {
   passengers: Passenger[];
   freightLots: FreightLot[];
   mailContracts: MailContract[];
-  passcode: string;
-  crewRoster?: CrewMember[];
 }
 
-export const defaultShipData: ShipData = {
-  shipName: "Unregistered",
-  shipClass: "Free Trader",
+export interface CompanyData {
+  passcode: string;
+  crewRoster: CrewMember[];
+  ships: ShipData[];
+}
+
+export const defaultCompanyData: CompanyData = {
   passcode: "0000",
-  hullCurrent: 40,
+  crewRoster: [],
+  ships: [
+    {
+      id: "sh-default01",
+      shipName: "Unregistered",
+      shipClass: "Free Trader",
+      hullCurrent: 40,
   hullMax: 40,
   armor: 0,
 
@@ -155,11 +165,12 @@ export const defaultShipData: ShipData = {
   maxLowBerths: 5,
   availableLowBerths: 5,
   maxCargoTons: 60,
-  availableCargoTons: 60,
-  passengers: [],
-  freightLots: [],
-  mailContracts: [],
-  crewRoster: []
+      availableCargoTons: 60,
+      passengers: [],
+      freightLots: [],
+      mailContracts: []
+    }
+  ]
 };
 
 const CriticalTrack = ({ name, value, onChange }: { name: string, value: number, onChange: (v: number) => void }) => {

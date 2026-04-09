@@ -10,9 +10,19 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship'>('menu');
   const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm', onConfirm?: () => void } | null>(null);
-  const { shipData, updateShipData, isOnline } = useShipData(shipId);
+  const { shipData: companyData, updateShipData: updateCompanyData, isOnline } = useShipData(shipId);
+  
+  const [activeSubShipId, setActiveSubShipId] = useState<string>('');
+  const activeShip = companyData?.ships?.find(s => s.id === activeSubShipId) || companyData?.ships?.[0];
+
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
+
+  const updateActiveShip = (updates: any) => {
+    if (!activeShip) return;
+    const updatedShips = companyData.ships.map(s => s.id === activeShip.id ? { ...s, ...updates } : s);
+    updateCompanyData({ ships: updatedShips });
+  };
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -47,6 +57,20 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)', border: '1px solid var(--color-phosphor-dim)', padding: '2px 5px' }}>357-1105</span>
           </div>
           <button onClick={onExit} style={{color: '#ff5555', borderColor: '#ff5555', marginBottom: '10px'}}>[ POWER DOWN ]</button>
+          
+          {companyData?.ships?.length > 1 && (
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>ACTIVE VESSEL:</label>
+              <select 
+                value={activeShip?.id || ''} 
+                onChange={(e) => setActiveSubShipId(e.target.value)}
+                style={{ width: '100%', marginTop: '5px', padding: '5px', background: 'var(--color-bg)', color: 'var(--color-phosphor)', borderColor: 'var(--color-phosphor)' }}
+              >
+                {companyData.ships.map(s => <option key={s.id} value={s.id}>{s.shipName}</option>)}
+              </select>
+            </div>
+          )}
+
           <button onClick={() => setActiveTab('dashboard')}>
             {activeTab === 'dashboard' ? '> Ship Status' : 'Ship Status'}
           </button>
@@ -64,14 +88,6 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           </button>
 
           <div style={{ marginTop: '20px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>ACCOUNT BALANCE</p>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
-              <span style={{ fontSize: '1.4rem', marginRight: '5px' }}>Cr</span>
-              <input 
-                type="number" 
-                value={shipData.credits} 
-                onChange={e => updateShipData({ credits: parseInt(e.target.value) || 0 })}
-                style={{ fontSize: '1.4rem', width: '100%', background: 'transparent', border: 'none', color: 'var(--color-phosphor)', borderBottom: '1px dashed var(--color-phosphor-dim)', padding: 0 }} 
               />
             </div>
           </div>
@@ -135,9 +151,9 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                       SYSTEM ROSTER
                       <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Manage personnel & payroll</span>
                     </button>
-                    <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setModalConfig({ title: 'MODULE OFFLINE', message: 'The Ship Manager Module is currently under construction by Imperial engineers.', type: 'alert' })}>
+                    <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setSysmanView('ship')}>
                       SHIP MANAGER
-                      <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Configure ship specs</span>
+                      <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Configure fleet & accounts</span>
                     </button>
                   </div>
 
@@ -168,75 +184,147 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
-                          <th>Name</th><th>Role</th><th>Type</th><th>Salary</th><th>Shares</th><th></th>
+                          <th>Name</th><th>Role</th><th>Ship Assignment</th><th>Type</th><th>Salary</th><th>Shares</th><th></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(shipData.crewRoster || []).map(crew => (
+                        {(companyData?.crewRoster || []).map(crew => (
                           <tr key={crew.id} style={{ borderBottom: '1px dashed var(--color-phosphor-dim)' }}>
                             <td><input type="text" value={crew.name} onChange={e => {
-                               const arr = (shipData.crewRoster || []).map(c => c.id === crew.id ? { ...c, name: e.target.value } : c);
-                               updateShipData({ crewRoster: arr });
+                               const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, name: e.target.value } : c);
+                               updateCompanyData({ crewRoster: arr });
                             }} style={{ width: '100px' }} /></td>
                             <td><input type="text" value={crew.roles} onChange={e => {
-                               const arr = (shipData.crewRoster || []).map(c => c.id === crew.id ? { ...c, roles: e.target.value } : c);
-                               updateShipData({ crewRoster: arr });
+                               const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, roles: e.target.value } : c);
+                               updateCompanyData({ crewRoster: arr });
                             }} style={{ width: '120px' }} /></td>
                             <td>
+                              <select value={crew.assignedShipId || ''} onChange={e => {
+                                const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, assignedShipId: e.target.value } : c);
+                                updateCompanyData({ crewRoster: arr });
+                              }} style={{ width: '120px' }}>
+                                <option value="">[ UNASSIGNED ]</option>
+                                {(companyData?.ships || []).map(s => <option key={s.id} value={s.id}>{s.shipName}</option>)}
+                              </select>
+                            </td>
+                            <td>
                               <select value={crew.type} onChange={e => {
-                                const arr = (shipData.crewRoster || []).map(c => c.id === crew.id ? { ...c, type: e.target.value as 'Player'|'NPC' } : c);
-                                updateShipData({ crewRoster: arr });
+                                const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, type: e.target.value as 'Player'|'NPC' } : c);
+                                updateCompanyData({ crewRoster: arr });
                               }}>
                                 <option value="Player">Player</option><option value="NPC">NPC</option>
                               </select>
                             </td>
                             <td>Cr <input type="number" value={crew.salary} onChange={e => {
-                               const arr = (shipData.crewRoster || []).map(c => c.id === crew.id ? { ...c, salary: parseInt(e.target.value)||0 } : c);
-                               updateShipData({ crewRoster: arr });
+                               const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, salary: parseInt(e.target.value)||0 } : c);
+                               updateCompanyData({ crewRoster: arr });
                             }} style={{ width: '80px' }} /></td>
                             <td><input type="number" step="0.1" value={crew.payrollShare} onChange={e => {
-                               const arr = (shipData.crewRoster || []).map(c => c.id === crew.id ? { ...c, payrollShare: parseFloat(e.target.value)||0 } : c);
-                               updateShipData({ crewRoster: arr });
+                               const arr = (companyData.crewRoster || []).map(c => c.id === crew.id ? { ...c, payrollShare: parseFloat(e.target.value)||0 } : c);
+                               updateCompanyData({ crewRoster: arr });
                             }} style={{ width: '60px' }} /></td>
                             <td>
-                              <button onClick={() => updateShipData({ crewRoster: (shipData.crewRoster || []).filter(c => c.id !== crew.id) })} style={{ color: '#ff5555', borderColor: '#ff5555', padding: '2px 5px', marginTop: '5px' }}>X</button>
+                              <button onClick={() => updateCompanyData({ crewRoster: (companyData.crewRoster || []).filter(c => c.id !== crew.id) })} style={{ color: '#ff5555', borderColor: '#ff5555', padding: '2px 5px', marginTop: '5px' }}>X</button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                     <button style={{ marginTop: '15px', width: '100%', padding: '10px' }} onClick={() => {
-                       updateShipData({ 
-                         crewRoster: [...(shipData.crewRoster || []), { id: Math.random().toString(), name: 'New Crew', roles: 'Crew', type: 'NPC', salary: 0, payrollShare: 1 }] 
+                       updateCompanyData({ 
+                         crewRoster: [...(companyData?.crewRoster || []), { id: Math.random().toString(), name: 'New Crew', roles: 'Crew', type: 'NPC', salary: 0, payrollShare: 1 }] 
                        });
                     }}>+ ADD CREW ENTITY</button>
+                  </div>
+                </>
+              )}
+
+              {sysmanView === 'ship' && (
+                <>
+                  <button onClick={() => setSysmanView('menu')} style={{ marginBottom: '20px', borderColor: 'var(--color-phosphor-dim)' }}>&lt; BACK TO MENU</button>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h3 style={{ margin: 0 }}>FLEET ASSETS</h3>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>COMPANY GRAND TOTAL</span><br/>
+                      <span style={{ fontSize: '1.2rem', color: '#00ff00' }}>Cr {(companyData?.ships || []).reduce((acc, s) => acc + (s.credits || 0), 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
+                          <th>Ship Name</th><th>Class</th><th>Assigned Crew</th><th>Liquid Credits</th><th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(companyData?.ships || []).map(subShip => {
+                          const assignedCount = (companyData?.crewRoster || []).filter(c => c.assignedShipId === subShip.id).length;
+                          return (
+                            <tr key={subShip.id} style={{ borderBottom: '1px dashed var(--color-phosphor-dim)' }}>
+                              <td style={{ padding: '10px 0' }}>{subShip.shipName}</td>
+                              <td>{subShip.shipClass}</td>
+                              <td>{assignedCount} Personnel</td>
+                              <td>Cr {subShip.credits.toLocaleString()}</td>
+                              <td>
+                                <button onClick={() => {
+                                  if (subShip.id === activeShip?.id) {
+                                      setActiveSubShipId(subShip.id);
+                                      setSysmanView('menu');
+                                      setActiveTab('dashboard');
+                                  } else {
+                                      setActiveSubShipId(subShip.id);
+                                  }
+                                }} style={{ borderColor: subShip.id === activeSubShipId ? '#00ff00' : 'var(--color-phosphor-dim)', color: subShip.id === activeSubShipId ? '#00ff00' : 'var(--color-phosphor)', padding: '5px 10px' }}>
+                                  {subShip.id === activeSubShipId ? '● ACTIVE' : 'SWITCH'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    
+                    <button style={{ marginTop: '15px', width: '100%', padding: '10px' }} onClick={() => {
+                       const newShip = { 
+                         ...activeShip, 
+                         id: Math.random().toString(), 
+                         shipName: 'New Vessel', 
+                         credits: 0,
+                         passengers: [],
+                         freightLots: [],
+                         mailContracts: []
+                       };
+                       updateCompanyData({ ships: [...(companyData?.ships || []), newShip] });
+                    }}>+ COMMISSION NEW SHIP</button>
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {activeTab === 'dashboard' && (
+          {activeTab === 'dashboard' && activeShip && (
             <>
               <div className="panel" data-title="[ SYSTEM DIAGNOSTICS ]">
-                <p>Welcome to the Traveler Trade Terminal.</p>
+                <p>Company Systems Online. Terminal bridged to: {activeShip.shipName}</p>
                 <p>Select a module from the SYS.NAV menu to begin calculating commerce.</p>
               </div>
-              <ShipStatus data={shipData} updateData={updateShipData} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} />
             </>
           )}
 
-          {activeTab === 'passengers' && (
+          {activeTab === 'passengers' && activeShip && (
             <>
-              <PassengerBroker shipData={shipData} updateShipData={updateShipData} />
-              <ShipStatus data={shipData} updateData={updateShipData} />
+              <PassengerBroker shipData={activeShip} updateShipData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} />
             </>
           )}
 
-          {activeTab === 'freight' && (
+          {activeTab === 'freight' && activeShip && (
             <>
-              <FreightBroker shipData={shipData} updateShipData={updateShipData} />
-              <ShipStatus data={shipData} updateData={updateShipData} />
+              <FreightBroker shipData={activeShip} updateShipData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} />
             </>
           )}
 

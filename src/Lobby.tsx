@@ -87,9 +87,9 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
 
       {showRegister ? (
         <div className="panel" style={{ width: '400px' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>REGISTER NEW CREW</h2>
+          <h2 style={{ color: 'var(--color-phosphor)', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>REGISTER ORGANIZATION</h2>
           
-          <label style={{ display: 'block', marginTop: '15px' }}>Ship Name</label>
+          <label style={{ display: 'block', marginTop: '15px' }}>Company Name</label>
           <input 
             type="text" 
             value={newCrewName}
@@ -142,7 +142,7 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
           </div>
           
           <div style={{ overflowY: 'auto', flex: 1, paddingRight: '10px' }}>
-            {loading ? <p>SYNCING WITH LOCAL X-BOAT RELAY TENDER...</p> : crews.length === 0 ? <p>NO ACTIVE TERMINALS FOUND.</p> : (
+            {loading ? <p>SYNCING WITH LOCAL X-BOAT RELAY TENDER...</p> : crews.length === 0 ? <p>NO ACTIVE ORGANIZATIONS FOUND.</p> : (
               crews.map(crew => (
                 <div key={crew.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px dashed var(--color-phosphor-dim)' }}>
                   <span style={{ fontSize: '1.2rem' }}>{crew.name}</span>

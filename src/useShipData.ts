@@ -1,26 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
-import type { ShipData } from './ShipStatus';
-
-// We need to move defaultShipData to here, or export it from ShipStatus. 
-// Since we are creating this file, let's just import the default from ShipStatus.
-import { defaultShipData } from './ShipStatus';
+import type { CompanyData } from './ShipStatus';
+import { defaultCompanyData } from './ShipStatus';
 
 export function useShipData(shipId: string) {
-  const [data, setData] = useState<ShipData>(() => {
-    // Try to instantly load local cache while waiting for network
-    const saved = localStorage.getItem('shipData');
-    if (saved) return { ...defaultShipData, ...JSON.parse(saved) };
-    return defaultShipData;
+  const [data, setData] = useState<CompanyData>(() => {
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (!parsed.ships) {
+           return { passcode: parsed.passcode || '0000', crewRoster: parsed.crewRoster || [], ships: [ { ...parsed, id: 'legacy-ship' } ] };
+        }
+        return { ...defaultCompanyData, ...parsed };
+      } catch(e) { return defaultCompanyData; }
+    }
+    return defaultCompanyData;
   });
   
   const [isOnline, setIsOnline] = useState(false);
-  
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Initial Fetch & Subscribe
   useEffect(() => {
     const fetchCloudData = async () => {
       const { data: row, error } = await supabase
@@ -31,27 +31,31 @@ export function useShipData(shipId: string) {
         
       if (row && row.data) {
         setIsOnline(true);
-        setData(prev => ({ ...prev, ...(row.data as ShipData) }));
-        localStorage.setItem('shipData', JSON.stringify(row.data));
+        let incoming = row.data as any;
+        if (!incoming.ships) {
+           incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...incoming, id: 'legacy-ship' } ] };
+        }
+        setData(incoming);
+        localStorage.setItem('companyData', JSON.stringify(incoming));
       } else if (error && error.code === 'PGRST116') {
-        await supabase.from('ship_state').insert({ id: shipId, data: data });
+        await supabase.from('ship_state').insert({ id: shipId, data: defaultCompanyData });
         setIsOnline(true);
       }
     };
 
     fetchCloudData();
 
-    // Setup an instant Broadcast channel
     channelRef.current = supabase.channel(`ship-sync-room-${shipId}`, {
-      config: {
-        broadcast: { ack: true, self: false }
-      }
+      config: { broadcast: { ack: true, self: false } }
     });
 
     channelRef.current.on('broadcast', { event: 'state-update' }, (payload) => {
-      const incomingData = payload.payload.data as ShipData;
-      setData(incomingData);
-      localStorage.setItem('shipData', JSON.stringify(incomingData));
+      let incoming = payload.payload.data;
+      if (!incoming.ships) {
+          incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...incoming, id: 'legacy-ship' } ] };
+      }
+      setData(incoming);
+      localStorage.setItem('companyData', JSON.stringify(incoming));
     }).subscribe((status) => {
       if (status === 'SUBSCRIBED') setIsOnline(true);
     });
@@ -61,35 +65,21 @@ export function useShipData(shipId: string) {
     };
   }, [shipId]);
 
-  const updateDataCallback = useCallback((updates: Partial<ShipData>) => {
-    setData((prev) => {
-      const newData = { ...prev, ...updates };
-      
-      // Save locally instantly
-      localStorage.setItem('shipData', JSON.stringify(newData));
-      
-      // Instantly broadcast the state to everyone else in the room
-      if (channelRef.current) {
+  const updateShipData = (updates: Partial<CompanyData>) => {
+    setData(prev => {
+      const next = { ...prev, ...updates };
+      localStorage.setItem('companyData', JSON.stringify(next));
+      if (isOnline && channelRef.current) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'state-update',
-          payload: { data: newData }
+          payload: { data: next }
         });
+        supabase.from('ship_state').update({ data: next }).eq('id', shipId).then();
       }
-      
-      // Debounce the heavy push to the Postgres database for persistence
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      
-      debounceTimer.current = setTimeout(async () => {
-        await supabase
-          .from('ship_state')
-          .update({ data: newData })
-          .eq('id', shipId);
-      }, 1000); // 1s buffer for db writes
-
-      return newData;
+      return next;
     });
-  }, [shipId]);
+  };
 
-  return { shipData: data, updateShipData: updateDataCallback, isOnline };
+  return { shipData: data, updateShipData, isOnline };
 }
