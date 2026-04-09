@@ -9,7 +9,7 @@ import { supabase } from './supabaseClient';
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
-  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void } | null>(null);
+  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit' | 'media', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void, iframeUrl?: string } | null>(null);
   const [promptValue, setPromptValue] = useState('');
   const [promptAmount, setPromptAmount] = useState('');
   const { shipData: companyData, updateShipData: updateCompanyData, isOnline } = useShipData(shipId);
@@ -157,6 +157,11 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     />
                   </>
                 )}
+                {modalConfig.type === 'media' && modalConfig.iframeUrl && (
+                  <div style={{ width: '100%', height: '315px', marginBottom: '20px' }}>
+                     <iframe width="100%" height="100%" src={modalConfig.iframeUrl} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 'none' }}></iframe>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
                   <button style={{ padding: '10px 20px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => setModalConfig(null)}>
                     {modalConfig.type === 'alert' ? 'ACKNOWLEDGE' : 'CANCEL'}
@@ -225,6 +230,19 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                       style={{ width: '100%', padding: '20px', fontSize: '1.2rem', borderColor: '#ff5555', color: '#ff5555' }}
                     >
                       ⚠️ [ DECOMMISSION SHIP / DELETE CREW ]
+                    </button>
+                    
+                    <button style={{ marginTop: '15px', width: '100%', padding: '15px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => {
+                        const randomIndex = Math.floor(Math.random() * 21); // Assuming at least 21 videos in the playlist
+                        setModalConfig({
+                          title: 'COMPANY APPROVED MEDIA',
+                          message: 'Broadcasting selected archives from local databanks...',
+                          type: 'media',
+                          iframeUrl: `https://www.youtube.com/embed/videoseries?list=PLP9BvyXK9FAGdZdjBxcrnzwiRWw-QArdL&index=${randomIndex}&autoplay=1`
+                        });
+                      }}
+                    >
+                      COMPANY APPROVED MEDIA
                     </button>
                   </div>
                 </>
