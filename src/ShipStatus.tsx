@@ -351,12 +351,7 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
             <div className="ship-field-row" style={{ marginTop: '10px' }}>
               <span style={{ minWidth: '100px' }}>Credits:</span>
               <div className="ship-field-inline" style={{flex: 1}}>
-                Cr <input 
-                type="number" 
-                value={data.credits} 
-                onChange={e => handleChange('credits', parseInt(e.target.value) || 0)}
-                style={{ fontSize: '1.4rem', width: '100%' }} 
-                />
+                Cr <span style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{data.credits.toLocaleString()}</span>
               </div>
             </div>
 

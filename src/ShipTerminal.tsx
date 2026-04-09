@@ -4,6 +4,7 @@ import { ShipStatus } from './ShipStatus';
 import { useShipData } from './useShipData';
 import { PassengerBroker } from './PassengerBroker';
 import { FreightBroker } from './FreightBroker';
+import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
@@ -55,8 +56,16 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
     }
   }, []);
 
+  let glitchClass = '';
+  if (activeShip?.criticalHits) {
+    const totalCrits = Object.values(activeShip.criticalHits).reduce((sum, val) => sum + (val as number), 0);
+    if (totalCrits >= 10) glitchClass = 'glitch-critical';
+    else if (totalCrits >= 5) glitchClass = 'glitch-major';
+    else if (totalCrits > 0) glitchClass = 'glitch-minor';
+  }
+
   return (
-    <div className="crt crt-flicker">
+    <div className={`crt crt-flicker ${glitchClass}`}>
       <div className="app-container">
         {/* Sidebar Navigation */}
         <div className="sidebar">
@@ -79,19 +88,19 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             </div>
           )}
 
-          <button onClick={() => setActiveTab('dashboard')}>
+          <button onClick={() => { setActiveTab('dashboard'); audioService.playClick(); }}>
             {activeTab === 'dashboard' ? '> Ship Status' : 'Ship Status'}
           </button>
-          <button onClick={() => setActiveTab('passengers')}>
+          <button onClick={() => { setActiveTab('passengers'); audioService.playClick(); }}>
             {activeTab === 'passengers' ? '> Passengers' : 'Passengers'}
           </button>
-          <button onClick={() => setActiveTab('freight')}>
+          <button onClick={() => { setActiveTab('freight'); audioService.playClick(); }}>
             {activeTab === 'freight' ? '> Cargo Broker' : 'Cargo Broker'}
           </button>
-          <button onClick={() => setActiveTab('starmap')}>
+          <button onClick={() => { setActiveTab('starmap'); audioService.playClick(); }}>
             {activeTab === 'starmap' ? '> Astrogation Map' : 'Astrogation Map'}
           </button>
-          <button onClick={() => setActiveTab('sysman')}>
+          <button onClick={() => { setActiveTab('sysman'); audioService.playClick(); }}>
             {activeTab === 'sysman' ? '> System Manager' : 'System Manager'}
           </button>
 

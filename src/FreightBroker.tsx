@@ -26,6 +26,40 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
     setModifiers(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleUwpParse = (isSource: boolean, val: string) => {
+    const clean = val.replace(/[^A-Za-z0-9]/g, '');
+    if (clean.length < 7) return;
+    const port = clean[0].toUpperCase();
+    const pop = parseInt(clean[4], 16);
+    
+    let popStr = '2-5';
+    if (!isNaN(pop)) {
+      if (pop <= 1) popStr = '<=1';
+      else if (pop <= 5) popStr = '2-5';
+      else if (pop <= 7) popStr = '6-7';
+      else popStr = '8+';
+    }
+    
+    const portMatched = ['A', 'B', 'C', 'D', 'E', 'X'].includes(port) ? (port === 'D' ? 'C' : port) : 'C';
+
+    const tlChar = clean.slice(-1).toUpperCase();
+    const tlVal = parseInt(tlChar, 16);
+    let tlStr = '7-8';
+    if (!isNaN(tlVal)) {
+      if (tlVal <= 5) tlStr = '<=5';
+      else if (tlVal === 6) tlStr = '6';
+      else if (tlVal <= 8) tlStr = '7-8';
+      else tlStr = '9+';
+    }
+
+    setModifiers(prev => ({
+      ...prev,
+      [isSource ? 'sourcePop' : 'destPop']: popStr,
+      [isSource ? 'sourceStarport' : 'destStarport']: portMatched,
+      [isSource ? 'sourceTL' : 'destTL']: tlStr
+    }));
+  };
+
   const calculateFreightTrafficDM = () => {
     let dm = modifiers.brokerEffect + modifiers.misc;
     
@@ -209,6 +243,14 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         <div>
           <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid var(--color-phosphor-dim)' }}>TRAFFIC MODIFIERS</h4>
+          <div className="stat-row">
+            <span style={{ color: 'var(--color-phosphor-dim)' }}>Source UWP</span>
+            <input type="text" placeholder="e.g. A788899-A" onChange={e => handleUwpParse(true, e.target.value)} style={{ width: '120px', borderColor: 'transparent', background: 'rgba(0,255,0,0.1)' }} />
+          </div>
+          <div className="stat-row">
+            <span style={{ color: 'var(--color-phosphor-dim)' }}>Dest UWP</span>
+            <input type="text" placeholder="e.g. C555432-8" onChange={e => handleUwpParse(false, e.target.value)} style={{ width: '120px', borderColor: 'transparent', background: 'rgba(0,255,0,0.1)' }} />
+          </div>
           <div className="stat-row">
             <span>Broker Check Effect</span>
             <input type="number" value={modifiers.brokerEffect} onChange={e => handleChange('brokerEffect', parseInt(e.target.value) || 0)} style={{ width: '60px' }} />

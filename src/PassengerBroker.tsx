@@ -22,6 +22,29 @@ export function PassengerBroker({ shipData, updateShipData }: { shipData: ShipDa
     misc: 0
   });
 
+  const handleUwpParse = (isSource: boolean, val: string) => {
+    const clean = val.replace(/[^A-Za-z0-9]/g, '');
+    if (clean.length < 7) return;
+    const port = clean[0].toUpperCase();
+    const pop = parseInt(clean[4], 16);
+    
+    let popStr = '2-5';
+    if (!isNaN(pop)) {
+      if (pop <= 1) popStr = '<2';
+      else if (pop <= 5) popStr = '2-5';
+      else if (pop <= 7) popStr = '6-7';
+      else popStr = '8+';
+    }
+    
+    const portMatched = ['A', 'B', 'C', 'D', 'E', 'X'].includes(port) ? (port === 'D' ? 'C' : port) : 'C';
+
+    setModifiers(prev => ({
+      ...prev,
+      [isSource ? 'sourcePop' : 'destPop']: popStr,
+      [isSource ? 'sourceStarport' : 'destStarport']: portMatched
+    }));
+  };
+
   const calculateTotalDM = (type: 'high' | 'middle' | 'basic' | 'low') => {
     let dm = modifiers.checkEffect + modifiers.stewardSkill + modifiers.misc;
     
@@ -106,6 +129,15 @@ export function PassengerBroker({ shipData, updateShipData }: { shipData: ShipDa
         <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Roll Modifiers (DM) Settings</h3>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', fontSize: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', color: 'var(--color-phosphor-dim)' }}>Quick Parse Source UWP:</label>
+            <input type="text" placeholder="e.g. A788899-A" onChange={e => handleUwpParse(true, e.target.value)} style={{width: '100%', borderColor: 'transparent', background: 'rgba(0,255,0,0.1)'}} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--color-phosphor-dim)' }}>Quick Parse Dest UWP:</label>
+            <input type="text" placeholder="e.g. C555432-8" onChange={e => handleUwpParse(false, e.target.value)} style={{width: '100%', borderColor: 'transparent', background: 'rgba(0,255,0,0.1)'}} />
+          </div>
+
           <div>
             <label style={{ display: 'block' }}>Broker/Carouse Effect:</label>
             <input type="number" value={modifiers.checkEffect} onChange={e => setModifiers({...modifiers, checkEffect: parseInt(e.target.value) || 0})} style={{width: '100%'}} />

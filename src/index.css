@@ -213,6 +213,40 @@ option {
   }
 }
 
+/* --- CRITICAL HIT GLITCH ANIMATIONS --- */
+@keyframes shakecrt {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-1px, 1px) rotate(-0.5deg); filter: hue-rotate(90deg); }
+  40% { transform: translate(1px, -1px) rotate(0.5deg); }
+  60% { transform: translate(-2px, 0px) rotate(0deg); filter: hue-rotate(-90deg); }
+  80% { transform: translate(2px, 1px) rotate(-0.5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes glitchFlicker {
+  0% { opacity: 1; }
+  5% { opacity: 0.8; text-shadow: 2px 0 red, -2px 0 blue; }
+  10% { opacity: 1; text-shadow: none; }
+  15% { opacity: 0.9; }
+  20% { opacity: 0.4; text-shadow: -4px 0 red, 3px 0 blue; }
+  25% { opacity: 1; text-shadow: none; }
+  100% { opacity: 1; }
+}
+
+.glitch-minor {
+  animation: glitchFlicker 4s infinite;
+}
+
+.glitch-major {
+  animation: glitchFlicker 2s infinite, shakecrt 3s infinite;
+  color: #ffcccc;
+}
+
+.glitch-critical {
+  animation: glitchFlicker 0.5s infinite, shakecrt 0.4s infinite;
+  color: #ff4444 !important;
+  text-shadow: 2px 0 var(--color-phosphor-dim) !important;
+}
 .ship-left-pane {
   display: flex;
   flex-direction: column;
