@@ -258,11 +258,24 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                  </div>
                  <div style={{border: '1px solid var(--color-phosphor-dim)', padding: '10px', marginTop: '15px'}}>
                     <h4>FINANCES (Cr)</h4>
-                    <div className="ship-field-row">Fuel: <input type="number" style={{width:'80px'}} value={data.finances.fuelCost} onChange={e => handleChange('finances', {...data.finances, fuelCost: parseInt(e.target.value)||0})} /></div>
-                    <div className="ship-field-row">Mortg: <input type="number" style={{width:'80px'}} value={data.finances.mortgage} onChange={e => handleChange('finances', {...data.finances, mortgage: parseInt(e.target.value)||0})} /></div>
-                    <div className="ship-field-row">LifeSup: <input type="number" style={{width:'80px'}} value={data.finances.lifeSupport} onChange={e => handleChange('finances', {...data.finances, lifeSupport: parseInt(e.target.value)||0})} /></div>
-                    <div className="ship-field-row">Salary: <input type="number" style={{width:'80px'}} value={data.finances.salaries} onChange={e => handleChange('finances', {...data.finances, salaries: parseInt(e.target.value)||0})} /></div>
-                    <div className="ship-field-row">Maint: <input type="number" style={{width:'80px'}} value={data.finances.maintenance} onChange={e => handleChange('finances', {...data.finances, maintenance: parseInt(e.target.value)||0})} /></div>
+                    {['fuelCost', 'mortgage', 'lifeSupport', 'salaries', 'maintenance'].map((key) => {
+                       const label = { fuelCost: 'Fuel', mortgage: 'Mortgage', lifeSupport: 'Life Support', salaries: 'Salaries', maintenance: 'Maintenance' }[key as keyof typeof data.finances];
+                       const val = (data.finances as any)[key] || 0;
+                       return (
+                         <div key={key} className="ship-field-row" style={{justifyContent: 'space-between', marginBottom: '8px'}}>
+                           <span style={{flex: 1}}>{label}:</span> 
+                           <input type="number" style={{width:'60px', flexShrink: 0}} value={val} 
+                             onChange={e => handleChange('finances', {...data.finances, [key]: parseInt(e.target.value)||0})} />
+                           <button 
+                             onClick={() => updateData({ credits: data.credits - val, finances: {...data.finances, [key]: 0} })} 
+                             style={{padding: '2px 5px', marginLeft: '10px', fontSize: '0.8rem', color: '#ff5555', borderColor: '#ff5555'}}
+                             disabled={val <= 0}
+                           >
+                             PAY
+                           </button>
+                         </div>
+                       )
+                    })}
                  </div>
               </div>
 
