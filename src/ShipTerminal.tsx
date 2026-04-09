@@ -245,6 +245,18 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     >
                       COMPANY APPROVED MEDIA
                     </button>
+
+                    <button style={{ marginTop: '15px', width: '100%', padding: '15px', borderColor: '#dca3ff', color: '#dca3ff' }} onClick={() => {
+                        setModalConfig({
+                          title: "CARYN FINP'S MANAGERIAL INSPIRATION",
+                          message: 'Accessing encrypted inspirational records...',
+                          type: 'media',
+                          iframeUrl: `https://www.youtube.com/embed/HWwWPkWmUu8?autoplay=1`
+                        });
+                      }}
+                    >
+                      CARYN FINP'S MANAGERIAL INSPIRATION
+                    </button>
                   </div>
                 </>
               )}
