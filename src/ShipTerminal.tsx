@@ -9,7 +9,8 @@ import { supabase } from './supabaseClient';
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
-  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm', onConfirm?: () => void } | null>(null);
+  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void } | null>(null);
+  const [promptValue, setPromptValue] = useState('');
   const { shipData: companyData, updateShipData: updateCompanyData, isOnline } = useShipData(shipId);
   
   const [activeSubShipId, setActiveSubShipId] = useState<string>('');
@@ -129,9 +130,17 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
               <div className="panel" style={{ maxWidth: '500px', border: '1px solid #ff5555', boxShadow: '0 0 20px rgba(255,85,85,0.4)', background: '#050000' }}>
                 <h3 style={{ margin: '0 0 15px 0', color: '#ff5555' }}>[ {modalConfig.title} ]</h3>
                 <p style={{ lineHeight: '1.5', marginBottom: '25px', color: 'var(--color-phosphor)' }}>{modalConfig.message}</p>
+                {modalConfig.type === 'prompt' && (
+                  <input 
+                    type="text" 
+                    value={promptValue} 
+                    onChange={e => setPromptValue(e.target.value)} 
+                    style={{ width: '100%', marginBottom: '20px', padding: '10px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', fontSize: '1.1rem' }} 
+                  />
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
                   <button style={{ padding: '10px 20px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => setModalConfig(null)}>
-                    {modalConfig.type === 'confirm' ? 'CANCEL' : 'ACKNOWLEDGE'}
+                    {modalConfig.type === 'alert' ? 'ACKNOWLEDGE' : 'CANCEL'}
                   </button>
                   {modalConfig.type === 'confirm' && (
                     <button style={{ padding: '10px 20px', borderColor: '#ff5555', color: '#ff5555', background: 'rgba(255,0,0,0.1)' }} onClick={() => {
@@ -139,6 +148,14 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                       setModalConfig(null);
                     }}>
                       PROCEED
+                    </button>
+                  )}
+                  {modalConfig.type === 'prompt' && (
+                    <button style={{ padding: '10px 20px', borderColor: '#00ff00', color: '#00ff00', background: 'rgba(0,255,0,0.1)' }} onClick={() => {
+                      if (modalConfig.onPromptSubmit) modalConfig.onPromptSubmit(promptValue);
+                      setModalConfig(null);
+                    }}>
+                      SUBMIT
                     </button>
                   )}
                 </div>
@@ -338,7 +355,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
-                          <th>Date / Time</th><th>Type</th><th>Description</th><th style={{ textAlign: 'right' }}>Amount</th>
+                          <th>Date / Time</th><th>Type</th><th>Description</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -356,6 +373,41 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                                 <td>{l.description}</td>
                                 <td style={{ textAlign: 'right', color: l.type === 'Income' || l.amount > 0 ? '#00ff00' : '#ff5555' }}>
                                   {l.amount > 0 ? '+' : ''}{l.amount.toLocaleString()} Cr
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button onClick={() => {
+                                     setPromptValue(l.description);
+                                     setModalConfig({
+                                       title: 'EDIT JOURNAL DESCRIPTION',
+                                       message: 'Modify the transaction details:',
+                                       type: 'prompt',
+                                       onPromptSubmit: (newDesc) => {
+                                          const updatedShips = companyData.ships.map(s => {
+                                             if (s.id === viewingLedgerShip.id) {
+                                                return { ...s, ledgers: s.ledgers?.map(entry => entry.id === l.id ? { ...entry, description: newDesc } : entry) };
+                                             }
+                                             return s;
+                                          });
+                                          updateCompanyData({ ships: updatedShips });
+                                       }
+                                     })
+                                  }} style={{ padding: '2px 5px', fontSize: '0.7rem', marginRight: '5px' }}>EDIT</button>
+                                  <button onClick={() => {
+                                     setModalConfig({
+                                       title: 'DELETE TRANSACTION',
+                                       message: 'Are you sure you want to delete this Ledger entry? If you do this, the system will reverse the transaction and refund/deduct the value automatically.',
+                                       type: 'confirm',
+                                       onConfirm: () => {
+                                          const updatedShips = companyData.ships.map(s => {
+                                             if (s.id === viewingLedgerShip.id) {
+                                                return { ...s, credits: s.credits - l.amount, ledgers: s.ledgers?.filter(entry => entry.id !== l.id) };
+                                             }
+                                             return s;
+                                          });
+                                          updateCompanyData({ ships: updatedShips });
+                                       }
+                                     })
+                                  }} style={{ padding: '2px 5px', fontSize: '0.7rem', borderColor: '#ff5555', color: '#ff5555' }}>DEL</button>
                                 </td>
                               </tr>
                             );

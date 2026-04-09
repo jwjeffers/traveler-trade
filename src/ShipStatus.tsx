@@ -279,10 +279,9 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                            <button 
                              onClick={() => {
                                const cost = val;
-                               const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: cost, description: `Paid ${label} Cost` };
+                               const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: -cost, description: `Paid ${label} Cost` };
                                updateData({ 
-                                 credits: data.credits - cost, 
-                                 finances: {...data.finances, [key]: 0},
+                                 credits: data.credits - cost,
                                  ledgers: [...(data.ledgers || []), newLedger]
                                })
                              }} 
@@ -435,7 +434,7 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               <button 
                                 onClick={() => {
                                   const remaining = data.passengers.filter(pass => pass.id !== p.id);
-                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: p.revenue, description: `Refunded ${p.type} Passenger Ticket (${p.name || 'Unknown'})` };
+                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: -p.revenue, description: `Refunded ${p.type} Passenger Ticket (${p.name || 'Unknown'})` };
                                   updateData({ 
                                     passengers: remaining,
                                     availableStaterooms: data.availableStaterooms + p.staterooms,
@@ -491,7 +490,7 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               <button 
                                 onClick={() => {
                                   const remaining = data.freightLots.filter(lot => lot.id !== f.id);
-                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: f.revenue, description: `Refunded ${f.type} Freight Lot [${f.id}]` };
+                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: -f.revenue, description: `Refunded ${f.type} Freight Lot [${f.id}]` };
                                   updateData({ 
                                     freightLots: remaining,
                                     availableCargoTons: data.availableCargoTons + f.tons,
