@@ -272,9 +272,9 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                        const label = { fuelCost: 'Fuel', mortgage: 'Mortgage', lifeSupport: 'Life Support', salaries: 'Salaries', maintenance: 'Maintenance' }[key as keyof typeof data.finances];
                        const val = (data.finances as any)[key] || 0;
                        return (
-                         <div key={key} className="ship-field-row" style={{justifyContent: 'space-between', marginBottom: '8px'}}>
-                           <span style={{flex: 1}}>{label}:</span> 
-                           <input type="number" style={{width:'60px', flexShrink: 0}} value={val} 
+                         <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'nowrap' }}>
+                           <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '5px' }}>{label}:</span> 
+                           <input type="number" style={{ width: '60px', flexShrink: 0 }} value={val} 
                              onChange={e => handleChange('finances', {...data.finances, [key]: parseInt(e.target.value)||0})} />
                            <button 
                              onClick={() => {
@@ -285,7 +285,7 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                  ledgers: [...(data.ledgers || []), newLedger]
                                })
                              }} 
-                             style={{padding: '2px 5px', marginLeft: '10px', fontSize: '0.8rem', color: '#ff5555', borderColor: '#ff5555'}}
+                             style={{ padding: '2px 4px', marginLeft: '5px', fontSize: '0.75rem', color: '#ff5555', borderColor: '#ff5555', flexShrink: 0 }}
                              disabled={val <= 0}
                            >
                              PAY

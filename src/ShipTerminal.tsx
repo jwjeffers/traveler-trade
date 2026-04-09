@@ -9,8 +9,9 @@ import { supabase } from './supabaseClient';
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
-  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void } | null>(null);
+  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void } | null>(null);
   const [promptValue, setPromptValue] = useState('');
+  const [promptAmount, setPromptAmount] = useState('');
   const { shipData: companyData, updateShipData: updateCompanyData, isOnline } = useShipData(shipId);
   
   const [activeSubShipId, setActiveSubShipId] = useState<string>('');
@@ -138,6 +139,24 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     style={{ width: '100%', marginBottom: '20px', padding: '10px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', fontSize: '1.1rem' }} 
                   />
                 )}
+                {modalConfig.type === 'ledger-edit' && (
+                  <>
+                    <input 
+                      type="text" 
+                      value={promptValue} 
+                      onChange={e => setPromptValue(e.target.value)} 
+                      placeholder="Description"
+                      style={{ width: '100%', marginBottom: '10px', padding: '10px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', fontSize: '1.1rem' }} 
+                    />
+                    <input 
+                      type="number" 
+                      value={promptAmount} 
+                      onChange={e => setPromptAmount(e.target.value)} 
+                      placeholder="Amount (e.g. -500)"
+                      style={{ width: '100%', marginBottom: '20px', padding: '10px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', fontSize: '1.1rem' }} 
+                    />
+                  </>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
                   <button style={{ padding: '10px 20px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => setModalConfig(null)}>
                     {modalConfig.type === 'alert' ? 'ACKNOWLEDGE' : 'CANCEL'}
@@ -156,6 +175,14 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                       setModalConfig(null);
                     }}>
                       SUBMIT
+                    </button>
+                  )}
+                  {modalConfig.type === 'ledger-edit' && (
+                    <button style={{ padding: '10px 20px', borderColor: '#00ff00', color: '#00ff00', background: 'rgba(0,255,0,0.1)' }} onClick={() => {
+                      if (modalConfig.onLedgerEditSubmit) modalConfig.onLedgerEditSubmit(promptValue, parseInt(promptAmount) || 0);
+                      setModalConfig(null);
+                    }}>
+                      SAVE EDITS
                     </button>
                   )}
                 </div>
@@ -377,14 +404,18 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                                 <td style={{ textAlign: 'right' }}>
                                   <button onClick={() => {
                                      setPromptValue(l.description);
+                                     setPromptAmount(l.amount.toString());
                                      setModalConfig({
-                                       title: 'EDIT JOURNAL DESCRIPTION',
-                                       message: 'Modify the transaction details:',
-                                       type: 'prompt',
-                                       onPromptSubmit: (newDesc) => {
+                                       title: 'EDIT JOURNAL ENTRY',
+                                       message: 'Modify the transaction details. Credit will be automatically adjusted.',
+                                       type: 'ledger-edit',
+                                       onLedgerEditSubmit: (newDesc, newAmount) => {
+                                          const amountDiff = newAmount - l.amount;
+                                          const updatedType: 'Income' | 'Expense' = newAmount >= 0 ? 'Income' : 'Expense';
                                           const updatedShips = companyData.ships.map(s => {
                                              if (s.id === viewingLedgerShip.id) {
-                                                return { ...s, ledgers: s.ledgers?.map(entry => entry.id === l.id ? { ...entry, description: newDesc } : entry) };
+                                                const newLedgers = s.ledgers?.map(entry => entry.id === l.id ? { ...entry, description: newDesc, amount: newAmount, type: updatedType } : entry);
+                                                return { ...s, credits: s.credits + amountDiff, ledgers: newLedgers };
                                              }
                                              return s;
                                           });
