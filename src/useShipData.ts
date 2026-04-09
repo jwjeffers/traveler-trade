@@ -6,7 +6,7 @@ import type { ShipData } from './ShipStatus';
 // Since we are creating this file, let's just import the default from ShipStatus.
 import { defaultShipData } from './ShipStatus';
 
-export function useShipData() {
+export function useShipData(shipId: string) {
   const [data, setData] = useState<ShipData>(() => {
     // Try to instantly load local cache while waiting for network
     const saved = localStorage.getItem('shipData');
@@ -26,7 +26,7 @@ export function useShipData() {
       const { data: row, error } = await supabase
         .from('ship_state')
         .select('data')
-        .eq('id', 'default-ship')
+        .eq('id', shipId)
         .single();
         
       if (row && row.data) {
@@ -34,7 +34,7 @@ export function useShipData() {
         setData(prev => ({ ...prev, ...(row.data as ShipData) }));
         localStorage.setItem('shipData', JSON.stringify(row.data));
       } else if (error && error.code === 'PGRST116') {
-        await supabase.from('ship_state').insert({ id: 'default-ship', data: data });
+        await supabase.from('ship_state').insert({ id: shipId, data: data });
         setIsOnline(true);
       }
     };
@@ -42,7 +42,7 @@ export function useShipData() {
     fetchCloudData();
 
     // Setup an instant Broadcast channel
-    channelRef.current = supabase.channel('ship-sync-room', {
+    channelRef.current = supabase.channel(`ship-sync-room-${shipId}`, {
       config: {
         broadcast: { ack: true, self: false }
       }
@@ -59,7 +59,7 @@ export function useShipData() {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-  }, []);
+  }, [shipId]);
 
   const updateDataCallback = useCallback((updates: Partial<ShipData>) => {
     setData((prev) => {
@@ -84,12 +84,12 @@ export function useShipData() {
         await supabase
           .from('ship_state')
           .update({ data: newData })
-          .eq('id', 'default-ship');
+          .eq('id', shipId);
       }, 1000); // 1s buffer for db writes
 
       return newData;
     });
-  }, []);
+  }, [shipId]);
 
   return { shipData: data, updateShipData: updateDataCallback, isOnline };
 }

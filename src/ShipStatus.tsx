@@ -94,11 +94,13 @@ export interface ShipData {
   passengers: Passenger[];
   freightLots: FreightLot[];
   mailContracts: MailContract[];
+  passcode?: string;
 }
 
 export const defaultShipData: ShipData = {
   shipName: "Unregistered",
   shipClass: "Free Trader",
+  passcode: "",
   hullCurrent: 40,
   hullMax: 40,
   armor: 0,
