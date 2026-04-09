@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
-  const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship'>('menu');
+  const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
   const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm', onConfirm?: () => void } | null>(null);
   const { shipData: companyData, updateShipData: updateCompanyData, isOnline } = useShipData(shipId);
   
@@ -17,6 +17,12 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
 
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
+
+  const [ledgerShipId, setLedgerShipId] = useState<string>('');
+  const [manualAmount, setManualAmount] = useState<string>('');
+  const [manualDesc, setManualDesc] = useState('');
+  const viewingLedgerShipId = ledgerShipId || activeShip?.id;
+  const viewingLedgerShip = companyData?.ships?.find(s => s.id === viewingLedgerShipId) || activeShip;
 
   const updateActiveShip = (updates: any) => {
     if (!activeShip) return;
@@ -146,14 +152,18 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                 <>
                   <p>Welcome to the System Management Console.</p>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '20px' }}>
                     <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setSysmanView('roster')}>
                       SYSTEM ROSTER
                       <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Manage personnel & payroll</span>
                     </button>
                     <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setSysmanView('ship')}>
-                      SHIP MANAGER
+                      FLEET ASSETS
                       <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Configure fleet & accounts</span>
+                    </button>
+                    <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setSysmanView('ledger')}>
+                      ACCOUNT LEDGERS
+                      <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Transaction history & journals</span>
                     </button>
                   </div>
 
@@ -298,6 +308,99 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                        };
                        updateCompanyData({ ships: [...(companyData?.ships || []), newShip] });
                     }}>+ COMMISSION NEW SHIP</button>
+                  </div>
+                </>
+              )}
+
+              {sysmanView === 'ledger' && viewingLedgerShip && (
+                <>
+                  <button onClick={() => setSysmanView('menu')} style={{ marginBottom: '20px', borderColor: 'var(--color-phosphor-dim)' }}>&lt; BACK TO MENU</button>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h3 style={{ margin: 0 }}>ACCOUNT LEDGER</h3>
+                    <div>
+                      <select 
+                        value={viewingLedgerShipId} 
+                        onChange={e => setLedgerShipId(e.target.value)}
+                        style={{ padding: '5px', background: 'var(--color-bg)', color: 'var(--color-phosphor)', borderColor: 'var(--color-phosphor)' }}
+                      >
+                        {(companyData?.ships || []).map(s => <option key={s.id} value={s.id}>{s.shipName}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '10px', border: '1px solid var(--color-phosphor)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '1.2rem' }}>Liquid Balance:</span>
+                    <span style={{ fontSize: '1.5rem', color: '#00ff00' }}>Cr {viewingLedgerShip.credits.toLocaleString()}</span>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--color-phosphor-dim)', padding: '5px' }}>
+                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
+                          <th>Date / Time</th><th>Type</th><th>Description</th><th style={{ textAlign: 'right' }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(!viewingLedgerShip.ledgers || viewingLedgerShip.ledgers.length === 0) ? (
+                          <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--color-phosphor-dim)' }}>No transactions found for this account.</td></tr>
+                        ) : (
+                          viewingLedgerShip.ledgers.slice().reverse().map(l => {
+                            const date = new Date(l.timestamp);
+                            return (
+                              <tr key={l.id} style={{ borderBottom: '1px dashed var(--color-phosphor-dim)' }}>
+                                <td style={{ padding: '8px 0', color: 'var(--color-phosphor-dim)', fontSize: '0.8rem' }}>
+                                  {date.toLocaleDateString()} {date.toLocaleTimeString()}
+                                </td>
+                                <td>{l.type}</td>
+                                <td>{l.description}</td>
+                                <td style={{ textAlign: 'right', color: l.type === 'Income' || l.amount > 0 ? '#00ff00' : '#ff5555' }}>
+                                  {l.amount > 0 ? '+' : ''}{l.amount.toLocaleString()} Cr
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ marginTop: '20px', padding: '15px', border: '1px solid var(--color-phosphor-dim)', background: 'rgba(0,0,0,0.3)' }}>
+                    <h4 style={{ margin: '0 0 10px 0' }}>Submit Journal Entry</h4>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input 
+                        type="number" 
+                        placeholder="Amount (e.g. -500 or 1200)" 
+                        value={manualAmount}
+                        onChange={e => setManualAmount(e.target.value)}
+                        style={{ width: '150px' }}
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Transaction Description..." 
+                        value={manualDesc}
+                        onChange={e => setManualDesc(e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <button 
+                        onClick={() => {
+                          const amt = parseInt(manualAmount);
+                          if (isNaN(amt) || !manualDesc) { alert('Invalid entry.'); return; }
+                          const type: 'Income' | 'Expense' = amt >= 0 ? 'Income' : 'Expense';
+                          const newLedger = { id: Math.random().toString(), timestamp: new Date().toISOString(), type, amount: amt, description: manualDesc };
+                          
+                          const updatedShips = companyData.ships.map(s => {
+                            if (s.id === viewingLedgerShip.id) {
+                              return { ...s, credits: s.credits + amt, ledgers: [...(s.ledgers || []), newLedger] };
+                            }
+                            return s;
+                          });
+                          updateCompanyData({ ships: updatedShips });
+                          setManualAmount('');
+                          setManualDesc('');
+                        }}
+                      >LOG ENTRY</button>
+                    </div>
                   </div>
                 </>
               )}

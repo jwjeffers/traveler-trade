@@ -52,6 +52,14 @@ export interface CrewMember {
   assignedShipId?: string;
 }
 
+export interface LedgerEntry {
+  id: string;
+  timestamp: string; // ISO string
+  type: 'Income' | 'Expense' | 'Manual';
+  amount: number;
+  description: string;
+}
+
 export interface ShipData {
   id: string; // added so we can find ships in the array
   shipName: string;
@@ -106,6 +114,7 @@ export interface ShipData {
   passengers: Passenger[];
   freightLots: FreightLot[];
   mailContracts: MailContract[];
+  ledgers?: LedgerEntry[];
 }
 
 export interface CompanyData {
@@ -170,7 +179,8 @@ export const defaultCompanyData: CompanyData = {
       availableCargoTons: 60,
       passengers: [],
       freightLots: [],
-      mailContracts: []
+      mailContracts: [],
+      ledgers: []
     }
   ]
 };
@@ -267,7 +277,15 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                            <input type="number" style={{width:'60px', flexShrink: 0}} value={val} 
                              onChange={e => handleChange('finances', {...data.finances, [key]: parseInt(e.target.value)||0})} />
                            <button 
-                             onClick={() => updateData({ credits: data.credits - val, finances: {...data.finances, [key]: 0} })} 
+                             onClick={() => {
+                               const cost = val;
+                               const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: cost, description: `Paid ${label} Cost` };
+                               updateData({ 
+                                 credits: data.credits - cost, 
+                                 finances: {...data.finances, [key]: 0},
+                                 ledgers: [...(data.ledgers || []), newLedger]
+                               })
+                             }} 
                              style={{padding: '2px 5px', marginLeft: '10px', fontSize: '0.8rem', color: '#ff5555', borderColor: '#ff5555'}}
                              disabled={val <= 0}
                            >
@@ -417,12 +435,14 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               <button 
                                 onClick={() => {
                                   const remaining = data.passengers.filter(pass => pass.id !== p.id);
+                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: p.revenue, description: `Refunded ${p.type} Passenger Ticket (${p.name || 'Unknown'})` };
                                   updateData({ 
                                     passengers: remaining,
                                     availableStaterooms: data.availableStaterooms + p.staterooms,
                                     availableLowBerths: data.availableLowBerths + p.lowBerths,
                                     availableCargoTons: data.availableCargoTons + p.cargo,
-                                    credits: data.credits - p.revenue
+                                    credits: data.credits - p.revenue,
+                                    ledgers: [...(data.ledgers || []), newLedger]
                                   });
                                 }}
                                 style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>
@@ -471,10 +491,12 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               <button 
                                 onClick={() => {
                                   const remaining = data.freightLots.filter(lot => lot.id !== f.id);
+                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: f.revenue, description: `Refunded ${f.type} Freight Lot [${f.id}]` };
                                   updateData({ 
                                     freightLots: remaining,
                                     availableCargoTons: data.availableCargoTons + f.tons,
-                                    credits: data.credits - f.revenue
+                                    credits: data.credits - f.revenue,
+                                    ledgers: [...(data.ledgers || []), newLedger]
                                   });
                                 }}
                                 style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>

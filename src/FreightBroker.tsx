@@ -179,10 +179,12 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
       return;
     }
     setLots(lots.filter(l => l.id !== lot.id));
+    const newLedger: any = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), type: 'Income', amount: lot.revenue, description: `Loaded ${lot.type} Freight Lot [${lot.id}]` };
     updateShipData({
       credits: (shipData.credits || 0) + lot.revenue,
       availableCargoTons: shipData.availableCargoTons - lot.tons,
-      freightLots: [...(shipData.freightLots || []), lot]
+      freightLots: [...(shipData.freightLots || []), lot],
+      ledgers: [...(shipData.ledgers || []), newLedger]
     });
   };
 
@@ -193,10 +195,12 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
       return;
     }
     setMail(null);
+    const newLedger: any = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), type: 'Income', amount: mail.revenue, description: `Accepted Mail Contract` };
     updateShipData({
        credits: (shipData.credits || 0) + mail.revenue,
        availableCargoTons: shipData.availableCargoTons - mail.totalTons,
-       mailContracts: [...(shipData.mailContracts || []), mail]
+       mailContracts: [...(shipData.mailContracts || []), mail],
+       ledgers: [...(shipData.ledgers || []), newLedger]
     });
   };
 

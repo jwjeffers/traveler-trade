@@ -87,13 +87,16 @@ export function PassengerBroker({ shipData, updateShipData }: { shipData: ShipDa
       cargo
     };
 
+    const newLedger: any = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), type: 'Income', amount: revenue, description: `Sold ${newPassenger.type} Ticket` };
+
     setManifest({ ...manifest, [type]: manifest[type] - 1 });
     updateShipData({
       credits: shipData.credits + revenue,
       availableStaterooms: shipData.availableStaterooms - staterooms,
       availableLowBerths: shipData.availableLowBerths - lowBerths,
       availableCargoTons: shipData.availableCargoTons - cargo,
-      passengers: [...(shipData.passengers || []), newPassenger]
+      passengers: [...(shipData.passengers || []), newPassenger],
+      ledgers: [...(shipData.ledgers || []), newLedger]
     });
   };
 
