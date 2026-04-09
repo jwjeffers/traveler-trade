@@ -109,12 +109,14 @@ export interface ShipData {
 }
 
 export interface CompanyData {
+  companyName: string;
   passcode: string;
   crewRoster: CrewMember[];
   ships: ShipData[];
 }
 
 export const defaultCompanyData: CompanyData = {
+  companyName: "Unregistered Organization",
   passcode: "0000",
   crewRoster: [],
   ships: [

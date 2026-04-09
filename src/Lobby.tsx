@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { defaultShipData, type ShipData } from './ShipStatus';
+import { defaultCompanyData, type CompanyData } from './ShipStatus';
 
 interface CrewEntry {
   id: string;
@@ -29,10 +29,13 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
     setLoading(true);
     const { data } = await supabase.from('ship_state').select('id, data');
     if (data) {
-      const parsed = data.map(row => ({
-        id: row.id,
-        name: (row.data as ShipData).shipName || row.id
-      }));
+      const parsed = data.map(row => {
+        const dbData = row.data as any;
+        return {
+          id: row.id,
+          name: dbData.companyName || (dbData.ships ? dbData.ships[0]?.shipName : dbData.shipName) || row.id
+        };
+      });
       setCrews(parsed);
     }
     setLoading(false);
@@ -44,9 +47,9 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
     // Generate simple ID slug
     const shipId = newCrewName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
     
-    const startingData: ShipData = {
-      ...defaultShipData,
-      shipName: newCrewName,
+    const startingData: CompanyData = {
+      ...defaultCompanyData,
+      companyName: newCrewName,
       passcode: newPasscode
     };
 
@@ -64,7 +67,7 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
 
     const { data: row } = await supabase.from('ship_state').select('data').eq('id', joinTarget).single();
     if (row && row.data) {
-      const shipPass = (row.data as ShipData).passcode;
+      const shipPass = (row.data as CompanyData).passcode;
       // If there is no passcode or it matches
       if (!shipPass || shipPass === joinPasscode) {
         onJoin(joinTarget);

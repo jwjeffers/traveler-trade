@@ -88,8 +88,8 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           </button>
 
           <div style={{ marginTop: '20px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
-              />
-            </div>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>{activeShip ? activeShip.shipName.toUpperCase() : 'UNKNOWN'} BALANCE</p>
+            <p style={{ margin: 0, fontSize: '1.2rem' }}>Cr {activeShip ? activeShip.credits.toLocaleString() : 0}</p>
           </div>
 
           <div style={{ marginTop: '20px' }}>
