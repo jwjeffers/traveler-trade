@@ -233,12 +233,13 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                     </button>
                     
                     <button style={{ marginTop: '15px', width: '100%', padding: '15px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => {
-                        const randomIndex = Math.floor(Math.random() * 21); // Assuming at least 21 videos in the playlist
+                        const vids = ['HU7tKKxeGNA', '1IGaug2scFw', 'wQHs3dDhnGQ', 'GokgyN9qg08', 'avCPlBhOE9A', 'URXHnbOh_wo', 'IlT7IO3x06w', 'loJjoXdJH3U', '4h3Iz2Ox8Yo', 'YbxAcjE75xA', 'aV5LA10ewW0', 'Tku4xjK4ihM', 'YcJsSrxB3uE', 'nd3P6HydSAk', 'vShcougX1Uw'];
+                        const selectedId = vids[Math.floor(Math.random() * vids.length)];
                         setModalConfig({
                           title: 'COMPANY APPROVED MEDIA',
                           message: 'Broadcasting selected archives from local databanks...',
                           type: 'media',
-                          iframeUrl: `https://www.youtube.com/embed/videoseries?list=PLP9BvyXK9FAGdZdjBxcrnzwiRWw-QArdL&index=${randomIndex}&autoplay=1`
+                          iframeUrl: `https://www.youtube.com/embed/${selectedId}?autoplay=1`
                         });
                       }}
                     >
