@@ -96,19 +96,26 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
     const baseDM = calculateFreightTrafficDM();
     
     const getShipper = () => {
-      const megacorps = [
-        "Tukera Lines", "Ling-Standard Products", "SuSAG", "Makhidkarun", 
-        "Sternmetal Horizons", "General Products", "Instellarms", 
-        "Delgado Trading", "Naasirka", "Sharurshid"
-      ];
-      const locals = [
-        "Independent Free Trader", "Local Mining Guild", "System Agricultural Coop",
-        "Noble Estate Logistics", "Orbital Factory 4", "Planetary Government",
-        "Smuggler Cartel", "Mercenary Outfitter"
-      ];
-      // 50% megacorp, 50% local
-      if (Math.random() > 0.5) return megacorps[Math.floor(Math.random() * megacorps.length)];
-      return locals[Math.floor(Math.random() * locals.length)];
+      // 15% chance to be a major classic Megacorporation
+      if (Math.random() > 0.85) {
+        const megacorps = [
+          "Tukera Lines", "Ling-Standard Products", "SuSAG", "Makhidkarun", 
+          "Sternmetal Horizons", "General Products", "Instellarms", 
+          "Delgado Trading", "Naasirka", "Sharurshid"
+        ];
+        return megacorps[Math.floor(Math.random() * megacorps.length)];
+      }
+
+      // Procedural generation for thousands of local/sector companies
+      const prefixes = ["Alpha", "Nova", "Imperial", "Trojan", "Vilani", "Spinward", "Core", "Vector", "Apex", "Prime", "Sirius", "Orion", "Zeta", "Omega", "Red", "Black", "Outer", "Border", "System", "Sector", "Planetary", "Orbital", "Interstellar", "Stellar", "Quantum", "Aegis", "Vanguard"];
+      const industries = ["Mining", "Logistics", "Biotech", "Heavy Industries", "Cybernetics", "Agri", "Energy", "Metals", "Shipping", "Freight", "Trade", "Chemicals", "Electronics", "Shipyards", "Armaments", "Supplies", "Imports", "Exports", "Mineral", "Manufacturing", "Synthetics", "Organics", "Robotics", "Salvage", "Munitions"];
+      const suffixes = ["Corp", "Ltd", "Syndicate", "Guild", "Cartel", "Cooperative", "Combine", "Consortium", "Enterprises", "Group", "Lines", "Partners", "Holdings", "LLC", "Trust", "Alliance", "Network"];
+
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const industry = industries[Math.floor(Math.random() * industries.length)];
+      const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+
+      return `${prefix} ${industry} ${suffix}`;
     };
 
     const generateSpecificType = (modifier: number, lotSizeMul: number, typeName: string) => {
