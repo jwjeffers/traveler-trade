@@ -95,6 +95,22 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
   const generateExchange = () => {
     const baseDM = calculateFreightTrafficDM();
     
+    const getShipper = () => {
+      const megacorps = [
+        "Tukera Lines", "Ling-Standard Products", "SuSAG", "Makhidkarun", 
+        "Sternmetal Horizons", "General Products", "Instellarms", 
+        "Delgado Trading", "Naasirka", "Sharurshid"
+      ];
+      const locals = [
+        "Independent Free Trader", "Local Mining Guild", "System Agricultural Coop",
+        "Noble Estate Logistics", "Orbital Factory 4", "Planetary Government",
+        "Smuggler Cartel", "Mercenary Outfitter"
+      ];
+      // 50% megacorp, 50% local
+      if (Math.random() > 0.5) return megacorps[Math.floor(Math.random() * megacorps.length)];
+      return locals[Math.floor(Math.random() * locals.length)];
+    };
+
     const generateSpecificType = (modifier: number, lotSizeMul: number, typeName: string) => {
       const roll = rollDice(2) + baseDM + modifier;
       const diceLots = getFreightLotsTable(roll);
@@ -107,7 +123,8 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
             id: typeName.charAt(0) + Math.random().toString(36).substr(2, 4).toUpperCase(),
             type: typeName,
             tons: tons,
-            revenue: tons * getPayout(modifiers.distance)
+            revenue: tons * getPayout(modifiers.distance),
+            shipper: getShipper()
          });
       }
       return generated;
@@ -279,6 +296,7 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
                   <th>Lot ID</th>
+                  <th>Client</th>
                   <th>Type</th>
                   <th>Tons</th>
                   <th>Revenue</th>
@@ -292,6 +310,7 @@ export function FreightBroker({ shipData, updateShipData }: { shipData: ShipData
                 {lots.map(lot => (
                   <tr key={lot.id}>
                     <td>{lot.id}</td>
+                    <td>{lot.shipper}</td>
                     <td>{lot.type}</td>
                     <td>{lot.tons}T</td>
                     <td>Cr {lot.revenue.toLocaleString()}</td>

@@ -32,6 +32,7 @@ export interface FreightLot {
   type: string;
   tons: number;
   revenue: number;
+  shipper?: string;
 }
 
 export interface MailContract {
@@ -413,7 +414,7 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                     <tbody>
                       {data.freightLots?.map(f => (
                         <tr key={f.id}>
-                          <td>{f.id}</td>
+                          <td>{f.shipper ? `${f.shipper} [${f.id}]` : f.id}</td>
                           <td>{f.type} Freight</td>
                           <td>{f.tons}T</td>
                           <td>Cr {f.revenue.toLocaleString()}</td>
