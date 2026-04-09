@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { defaultShipData, ShipData } from './ShipStatus';
+import { defaultShipData, type ShipData } from './ShipStatus';
 
 interface CrewEntry {
   id: string;
