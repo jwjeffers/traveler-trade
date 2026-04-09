@@ -121,7 +121,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             </>
           )}
 
-          {activeTab === 'starmap' && (
+          <div style={{ display: activeTab === 'starmap' ? 'block' : 'none' }}>
             <div className="panel" data-title="[ ASTROGATION DATA LINK ]" style={{ height: 'calc(100vh - 120px)', padding: '5px' }}>
               <iframe 
                 src={mapUrl} 
@@ -129,7 +129,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                 title="Traveller Astrogation Map"
               />
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
