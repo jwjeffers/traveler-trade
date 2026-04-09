@@ -16,9 +16,7 @@ export function useShipData() {
   
   const [isOnline, setIsOnline] = useState(false);
   
-  // Track if a local modification happened recently to prevent echo-overwrites
-  const lastWriteTime = useRef<number>(0);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -46,7 +44,7 @@ export function useShipData() {
     // Setup an instant Broadcast channel
     channelRef.current = supabase.channel('ship-sync-room', {
       config: {
-        broadcast: { acknowledge: true, self: false }
+        broadcast: { ack: true, self: false }
       }
     });
 

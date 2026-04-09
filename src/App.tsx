@@ -43,7 +43,7 @@ function App() {
     try {
       // @ts-ignore
       const { ipcRenderer } = window.require('electron');
-      const handleMapUrl = (event: any, url: string) => {
+      const handleMapUrl = (_event: any, url: string) => {
         setMapUrl(url);
         localStorage.setItem('astrogationMapUrl', url);
       };
