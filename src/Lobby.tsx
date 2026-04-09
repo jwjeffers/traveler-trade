@@ -100,6 +100,8 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
           <label style={{ display: 'block', marginTop: '15px' }}>Terminal Passcode</label>
           <input 
             type="password" 
+            autoComplete="new-password"
+            data-lpignore="true"
             value={newPasscode}
             onChange={e => setNewPasscode(e.target.value)}
             style={{ width: '100%', background: 'black', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', padding: '5px' }} 
@@ -117,6 +119,8 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
            
            <input 
             type="password" 
+            autoComplete="new-password"
+            data-lpignore="true"
             placeholder="ENTER PASSCODE"
             value={joinPasscode}
             onChange={e => setJoinPasscode(e.target.value)}
