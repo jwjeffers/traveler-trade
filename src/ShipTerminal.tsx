@@ -9,6 +9,7 @@ import { supabase } from './supabaseClient';
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship'>('menu');
+  const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm', onConfirm?: () => void } | null>(null);
   const { shipData, updateShipData, isOnline } = useShipData(shipId);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
@@ -101,6 +102,28 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           <h1>THIRD IMPERIUM // COMMERCE</h1>
           <hr style={{ borderColor: 'var(--color-phosphor-dim)', marginBottom: '20px' }} />
           
+          {modalConfig && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+              <div className="panel" style={{ maxWidth: '500px', border: '1px solid #ff5555', boxShadow: '0 0 20px rgba(255,85,85,0.4)', background: '#050000' }}>
+                <h3 style={{ margin: '0 0 15px 0', color: '#ff5555' }}>[ {modalConfig.title} ]</h3>
+                <p style={{ lineHeight: '1.5', marginBottom: '25px', color: 'var(--color-phosphor)' }}>{modalConfig.message}</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+                  <button style={{ padding: '10px 20px', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor)' }} onClick={() => setModalConfig(null)}>
+                    {modalConfig.type === 'confirm' ? 'CANCEL' : 'ACKNOWLEDGE'}
+                  </button>
+                  {modalConfig.type === 'confirm' && (
+                    <button style={{ padding: '10px 20px', borderColor: '#ff5555', color: '#ff5555', background: 'rgba(255,0,0,0.1)' }} onClick={() => {
+                      if (modalConfig.onConfirm) modalConfig.onConfirm();
+                      setModalConfig(null);
+                    }}>
+                      PROCEED
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'sysman' && (
             <div className="panel" data-title="[ SYSTEM MANAGER ]">
               {sysmanView === 'menu' && (
@@ -112,7 +135,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                       SYSTEM ROSTER
                       <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Manage personnel & payroll</span>
                     </button>
-                    <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => alert('Ship Manager Module: Under Construction')}>
+                    <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => setModalConfig({ title: 'MODULE OFFLINE', message: 'The Ship Manager Module is currently under construction by Imperial engineers.', type: 'alert' })}>
                       SHIP MANAGER
                       <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Configure ship specs</span>
                     </button>
@@ -120,12 +143,15 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
 
                   <div style={{ marginTop: '20px' }}>
                     <button 
-                      onClick={async () => {
-                        if (window.confirm("CRITICAL WARNING: This will permanently delete the ship manifest, crew data, and clear all cargo records. This action CANNOT be undone. Are you sure you wish to decommission this vessel?")) {
+                      onClick={() => setModalConfig({
+                        title: 'CRITICAL WARNING',
+                        message: 'This will permanently delete the ship manifest, crew data, and clear all cargo records. This action CANNOT be undone. Are you sure you wish to decommission this vessel?',
+                        type: 'confirm',
+                        onConfirm: async () => {
                           await supabase.from('ship_state').delete().eq('id', shipId);
                           onExit();
                         }
-                      }} 
+                      })} 
                       style={{ width: '100%', padding: '20px', fontSize: '1.2rem', borderColor: '#ff5555', color: '#ff5555' }}
                     >
                       ⚠️ [ DECOMMISSION SHIP / DELETE CREW ]
