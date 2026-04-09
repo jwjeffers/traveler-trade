@@ -79,10 +79,11 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
   return (
     <div className="crt crt-flicker" style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a', padding: '20px' }}>
       
-      <h1 style={{ fontSize: '3rem', margin: 0, textShadow: '0 0 10px var(--color-phosphor)', textAlign: 'center' }}>
-        UFP GLOBAL COMMERCE NETWORK
+      <h1 style={{ fontSize: '3rem', margin: 0, textShadow: '0 0 10px var(--color-phosphor)', textAlign: 'center', textTransform: 'uppercase' }}>
+        Third Imperium Commerce Network
       </h1>
-      <p style={{ color: 'var(--color-phosphor-dim)', marginBottom: '40px' }}>SECURE CREW LINK ESTABLISHED</p>
+      <p style={{ color: 'var(--color-phosphor-dim)', marginBottom: '5px', fontSize: '1.2rem', letterSpacing: '2px' }}>TROJAN REACH TERMINAL INTERFACE</p>
+      <p style={{ color: 'var(--color-phosphor-dim)', marginBottom: '40px' }}>[ SECURE CREW LINK ESTABLISHED ]</p>
 
       {showRegister ? (
         <div className="panel" style={{ width: '400px' }}>

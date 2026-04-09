@@ -85,13 +85,13 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           
           <div style={{ marginTop: 'auto', borderTop: '1px dashed var(--color-phosphor-dim)', paddingTop: '10px' }}>
             <p>v1.0.0_STABLE</p>
-            <p>UFP_TERMINAL_01</p>
+            <p>IMPERIUM_TERMINAL_TR</p>
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="main-content">
-          <h1>TRAVELER // COMMERCE</h1>
+          <h1>THIRD IMPERIUM // COMMERCE</h1>
           <hr style={{ borderColor: 'var(--color-phosphor-dim)', marginBottom: '20px' }} />
           
           {activeTab === 'dashboard' && (
