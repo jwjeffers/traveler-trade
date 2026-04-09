@@ -4,10 +4,10 @@ import { ShipStatus } from './ShipStatus';
 import { useShipData } from './useShipData';
 import { PassengerBroker } from './PassengerBroker';
 import { FreightBroker } from './FreightBroker';
-
+import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
   const { shipData, updateShipData, isOnline } = useShipData(shipId);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
@@ -57,6 +57,9 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           <button onClick={() => setActiveTab('starmap')}>
             {activeTab === 'starmap' ? '> Astrogation Map' : 'Astrogation Map'}
           </button>
+          <button onClick={() => setActiveTab('sysman')}>
+            {activeTab === 'sysman' ? '> System Manager' : 'System Manager'}
+          </button>
 
           <div style={{ marginTop: '20px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>ACCOUNT BALANCE</p>
@@ -97,6 +100,37 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           <h1>THIRD IMPERIUM // COMMERCE</h1>
           <hr style={{ borderColor: 'var(--color-phosphor-dim)', marginBottom: '20px' }} />
           
+          {activeTab === 'sysman' && (
+            <div className="panel" data-title="[ SYSTEM MANAGER ]">
+              <p>Welcome to the System Management Console.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => alert('System Roster Module: Under Construction')}>
+                  SYSTEM ROSTER
+                  <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Placeholder: View connected users</span>
+                </button>
+                <button style={{ padding: '20px', fontSize: '1.2rem', borderColor: 'var(--color-phosphor-dim)' }} onClick={() => alert('Ship Manager Module: Under Construction')}>
+                  SHIP MANAGER
+                  <br/><span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>Placeholder: Configure ship specs</span>
+                </button>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <button 
+                  onClick={async () => {
+                    if (window.confirm("CRITICAL WARNING: This will permanently delete the ship manifest, crew data, and clear all cargo records. This action CANNOT be undone. Are you sure you wish to decommission this vessel?")) {
+                      await supabase.from('ship_state').delete().eq('id', shipId);
+                      onExit();
+                    }
+                  }} 
+                  style={{ width: '100%', padding: '20px', fontSize: '1.2rem', borderColor: '#ff5555', color: '#ff5555' }}
+                >
+                  ⚠️ [ DECOMMISSION SHIP / DELETE CREW ]
+                </button>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'dashboard' && (
             <>
               <div className="panel" data-title="[ SYSTEM DIAGNOSTICS ]">
