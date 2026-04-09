@@ -42,6 +42,15 @@ export interface MailContract {
   revenue: number;
 }
 
+export interface CrewMember {
+  id: string;
+  name: string;
+  roles: string;
+  type: 'Player' | 'NPC';
+  salary: number;
+  payrollShare: number;
+}
+
 export interface ShipData {
   shipName: string;
   shipClass: string;
@@ -95,13 +104,14 @@ export interface ShipData {
   passengers: Passenger[];
   freightLots: FreightLot[];
   mailContracts: MailContract[];
-  passcode?: string;
+  passcode: string;
+  crewRoster?: CrewMember[];
 }
 
 export const defaultShipData: ShipData = {
   shipName: "Unregistered",
   shipClass: "Free Trader",
-  passcode: "",
+  passcode: "0000",
   hullCurrent: 40,
   hullMax: 40,
   armor: 0,
@@ -148,7 +158,8 @@ export const defaultShipData: ShipData = {
   availableCargoTons: 60,
   passengers: [],
   freightLots: [],
-  mailContracts: []
+  mailContracts: [],
+  crewRoster: []
 };
 
 const CriticalTrack = ({ name, value, onChange }: { name: string, value: number, onChange: (v: number) => void }) => {
