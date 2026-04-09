@@ -215,21 +215,21 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
         
         {/* LEFT PANE: Digital Character Sheet */}
         <div className="ship-left-pane">
-           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '15px' }}>
-              <div className="ship-field-row" style={{ gridColumn: 'span 2' }}>
-                 <div className="ship-field-inline" style={{flex: 1}}>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className="ship-field-row">
+                 <div className="ship-field-inline" style={{flex: 1, minWidth: '150px'}}>
                     SHIP'S NAME: <input type="text" value={data.shipName} onChange={e => handleChange('shipName', e.target.value)} style={{flex: 1, minWidth: '50px'}} />
                  </div>
-                 <div className="ship-field-inline">
+                 <div className="ship-field-inline" style={{flexWrap: 'wrap'}}>
                     HULL: <input type="number" style={{width: '60px'}} value={data.hullCurrent} onChange={e => handleChange('hullCurrent', parseInt(e.target.value) || 0)} /> / <input type="number" style={{width: '60px'}} value={data.hullMax} onChange={e => handleChange('hullMax', parseInt(e.target.value) || 0)} />
                     ARMOUR: <input type="number" style={{width: '40px'}} value={data.armor} onChange={e => handleChange('armor', parseInt(e.target.value) || 0)} />
                  </div>
               </div>
-              <div className="ship-field-row" style={{ gridColumn: 'span 2' }}>
-                 <div className="ship-field-inline" style={{flex: 1}}>
+              <div className="ship-field-row">
+                 <div className="ship-field-inline" style={{flex: 1, minWidth: '150px'}}>
                     CLASS: <input type="text" value={data.shipClass} onChange={e => handleChange('shipClass', e.target.value)} style={{flex: 1, minWidth: '50px'}} />
                  </div>
-                 <div className="ship-field-inline">
+                 <div className="ship-field-inline" style={{flexWrap: 'wrap'}}>
                     POWER PTS: <input type="number" style={{width: '60px'}} value={data.powerPoints} onChange={e => handleChange('powerPoints', parseInt(e.target.value) || 0)} />
                     REQ: <input type="number" style={{width: '60px'}} value={data.powerRequired} onChange={e => handleChange('powerRequired', parseInt(e.target.value) || 0)} />
                  </div>
