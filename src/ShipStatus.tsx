@@ -44,10 +44,16 @@ export interface MailContract {
 
 export interface TradeGoodItem {
   id: string;
-  d66: number;
+  d66: number | string;
   type: string;
   tons: number;
   purchasePrice: number;
+}
+
+export interface MiscCargoItem {
+  id: string;
+  description: string;
+  tons: number;
 }
 
 export interface CrewMember {
@@ -123,6 +129,7 @@ export interface ShipData {
   freightLots: FreightLot[];
   mailContracts: MailContract[];
   tradeGoods?: TradeGoodItem[];
+  miscCargo?: MiscCargoItem[];
   ledgers?: LedgerEntry[];
 }
 
@@ -573,6 +580,42 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                 updateData({ 
                                   tradeGoods: remaining,
                                   availableCargoTons: data.availableCargoTons + tg.tons
+                                });
+                              }}
+                              style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ff6666', color: '#ff6666' }}>
+                              Dump Cargo
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h3 style={{marginTop: '30px', color: '#00ff00'}}>Miscellaneous Cargo</h3>
+              {(!data.miscCargo || data.miscCargo.length === 0) ? (
+                <p style={{ color: 'var(--color-phosphor-dim)' }}>No miscellaneous cargo stored.</p>
+              ) : (
+                <div style={{overflowY: 'auto', maxHeight: '300px'}}>
+                  <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #00ff00' }}>
+                        <th>Description</th><th>Tons</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.miscCargo.map(mc => (
+                        <tr key={mc.id}>
+                          <td>{mc.description}</td>
+                          <td>{mc.tons}T</td>
+                          <td>
+                            <button 
+                              onClick={() => {
+                                const remaining = data.miscCargo!.filter(c => c.id !== mc.id);
+                                updateData({ 
+                                  miscCargo: remaining,
+                                  availableCargoTons: data.availableCargoTons + mc.tons
                                 });
                               }}
                               style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ff6666', color: '#ff6666' }}>
