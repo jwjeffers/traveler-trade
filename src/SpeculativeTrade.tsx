@@ -66,6 +66,7 @@ export function SpeculativeTrade() {
   
   // Sale State
   const [saleRoll, setSaleRoll] = useState<number>(0);
+  const [showLegend, setShowLegend] = useState(false);
 
   const handleSourceUwp = (val: string) => {
     setSourceUwp(val);
@@ -136,7 +137,13 @@ export function SpeculativeTrade() {
              <input type="text" value={sourceUwp} onChange={e => handleSourceUwp(e.target.value.toUpperCase())} placeholder="e.g. A788899-A" style={{width: '120px'}}/>
           </div>
           <div style={{ marginTop: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+              <button 
+                onClick={() => { setShowLegend(true); audioService.playClick(); }}
+                style={{ padding: '0px 4px', fontSize: '0.7rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
+              >[?]</button>
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
               {ALL_CODES.map(c => (
                 <button 
@@ -173,7 +180,13 @@ export function SpeculativeTrade() {
              <input type="text" value={destUwp} onChange={e => handleDestUwp(e.target.value.toUpperCase())} placeholder="e.g. C543211-5" style={{width: '120px', borderColor: '#dca3ff'}}/>
           </div>
           <div style={{ marginTop: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+              <button 
+                onClick={() => { setShowLegend(true); audioService.playClick(); }}
+                style={{ padding: '0px 4px', fontSize: '0.7rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
+              >[?]</button>
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
               {ALL_CODES.map(c => (
                 <button 
@@ -318,6 +331,48 @@ export function SpeculativeTrade() {
           </tbody>
         </table>
       </div>
+
+      {/* LEGEND MODAL */}
+      {showLegend && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="panel" style={{ maxWidth: '700px', maxHeight: '85vh', overflowY: 'auto', border: '1px solid var(--color-phosphor)', background: '#050000', padding: '25px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>
+              <h2 style={{ margin: 0, color: 'var(--color-phosphor)' }}>TRADE CODE GLOSSARY</h2>
+              <button onClick={() => { setShowLegend(false); audioService.playClick(); }} style={{ padding: '5px 15px', borderColor: 'var(--color-phosphor)' }}>CLOSE</button>
+            </div>
+            
+            <div style={{ fontSize: '0.9rem', color: 'var(--color-phosphor-dim)', lineHeight: '1.4' }}>
+              <h3 style={{ color: '#00ff00', marginTop: '15px', marginBottom: '5px' }}>Planetary Economies</h3>
+              <p><b>Ag (Agricultural):</b> Bountiful environments. Specialize in farming and mass food production.</p>
+              <p><b>In (Industrial):</b> Densely populated worlds focused on heavy manufacturing and machinery.</p>
+              <p><b>Na (Non-Agricultural):</b> Worlds where farming on a large scale is impossible; must import food.</p>
+              <p><b>Ni (Non-Industrial):</b> Developing or sparsely populated worlds lacking heavy industry.</p>
+              <p><b>Ri (Rich):</b> Prosperous worlds with high living standards. Great for luxury goods.</p>
+              <p><b>Po (Poor):</b> Disadvantaged worlds struggling to survive; only afford cheap essentials.</p>
+
+              <h3 style={{ color: '#00ff00', marginTop: '20px', marginBottom: '5px' }}>Demographics & Technology</h3>
+              <p><b>Hi (High Population):</b> Billions of residents. Huge consumers of raw materials.</p>
+              <p><b>Lo (Low Population):</b> Outposts or colonies with less than ten thousand inhabitants.</p>
+              <p><b>Ht (High Tech):</b> TL 12+. Required for state-of-the-art cybernetics and weaponry.</p>
+              <p><b>Lt (Low Tech):</b> TL 5-. Primitive worlds where basic modern tech is incredibly valuable.</p>
+              <p><b>Ba (Barren):</b> Dead worlds with zero population, government, and law.</p>
+
+              <h3 style={{ color: '#00ff00', marginTop: '20px', marginBottom: '5px' }}>Biospheres & Geography</h3>
+              <p><b>As (Asteroid):</b> Zero-G mining belts. Excellent for ore/gem extraction, require survival imports.</p>
+              <p><b>De (Desert):</b> Worlds completely lacking surface water. Water and wood command massive premiums.</p>
+              <p><b>Fl (Fluid Oceans):</b> Worlds with exotic, non-water oceans (e.g., methane). Good for petrochemicals.</p>
+              <p><b>Ga (Garden):</b> Near-perfect Earth-like worlds, highly valued for biological exports.</p>
+              <p><b>Ic (Ice-Capped):</b> Frozen planets locked in eternal winter with frozen oceans.</p>
+              <p><b>Wa (Water World):</b> Planets composed almost entirely of deep oceans with no landmasses.</p>
+              <p><b>Va (Vacuum):</b> Worlds completely devoid of any atmosphere. Requires domes/bunkers.</p>
+
+              <h3 style={{ color: '#ff5555', marginTop: '20px', marginBottom: '5px' }}>Travel Advisories (TAS Zones)</h3>
+              <p><b>Amber (Amber Zone):</b> Dangerous worlds (weather, war, or laws). Trade is risky but lucrative.</p>
+              <p><b>Red (Red Zone):</b> Interdicted worlds. Travel is illegal; trade here is high-risk smuggling.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
