@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ShipTerminal } from './ShipTerminal';
 import { Lobby } from './Lobby';
 import { BootSequence } from './BootSequence';
