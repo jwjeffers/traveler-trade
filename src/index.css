@@ -137,13 +137,13 @@ option {
   padding: 0 20px;
 }
 
-.main-content::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 15px;
 }
-.main-content::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: var(--color-bg);
 }
-.main-content::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: var(--color-phosphor-dim);
 }
 
