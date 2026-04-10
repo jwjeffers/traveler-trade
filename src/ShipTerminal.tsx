@@ -56,13 +56,24 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
     }
   }, []);
 
-  let glitchClass = '';
-  if (activeShip?.criticalHits) {
-    const totalCrits = Object.values(activeShip.criticalHits).reduce((sum, val) => sum + (val as number), 0);
-    if (totalCrits >= 10) glitchClass = 'glitch-critical';
-    else if (totalCrits >= 5) glitchClass = 'glitch-major';
-    else if (totalCrits > 0) glitchClass = 'glitch-minor';
-  }
+  const [glitchClass, setGlitchClass] = useState('');
+  
+  const totalCrits = activeShip?.criticalHits ? Object.values(activeShip.criticalHits).reduce((sum, val) => sum + (val as number), 0) : 0;
+  
+  useEffect(() => {
+    let triggeredClass = '';
+    if (totalCrits >= 10) triggeredClass = 'glitch-critical';
+    else if (totalCrits >= 5) triggeredClass = 'glitch-major';
+    else if (totalCrits > 0) triggeredClass = 'glitch-minor';
+    
+    if (triggeredClass) {
+      setGlitchClass(triggeredClass);
+      const timer = setTimeout(() => {
+        setGlitchClass('');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [totalCrits]);
 
   return (
     <div className={`crt crt-flicker ${glitchClass}`}>
