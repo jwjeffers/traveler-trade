@@ -572,7 +572,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
 
           {activeTab === 'speculative' && activeShip && (
             <>
-              <SpeculativeTrade />
+              <SpeculativeTrade shipData={activeShip} updateShipData={updateActiveShip} />
               <ShipStatus data={activeShip} updateData={updateActiveShip} />
             </>
           )}

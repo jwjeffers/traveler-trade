@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TRADE_GOODS, MODIFIED_PRICE_TABLE, type TradeCode, type TradeGood } from './tradeGoodsData';
 import { audioService } from './audioService';
-import { useShipData } from './useShipData';
+import type { ShipData, LedgerEntry } from './ShipStatus';
 
 const ALL_CODES: TradeCode[] = ['Ag', 'As', 'Ba', 'De', 'Fl', 'Ga', 'Hi', 'Ht', 'Ic', 'In', 'Lo', 'Lt', 'Na', 'Ni', 'Po', 'Ri', 'Wa', 'Va', 'Amber', 'Red'];
 
@@ -48,7 +48,7 @@ function calculateDM(dms: {code: TradeCode, bonus: number}[], activeCodes: Trade
   return highest === -999 ? 0 : highest;
 }
 
-export function SpeculativeTrade() {
+export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: ShipData, updateShipData?: (updates: Partial<ShipData>) => void }) {
   const [sourceUwp, setSourceUwp] = useState('');
   const [destUwp, setDestUwp] = useState('');
   
@@ -60,6 +60,7 @@ export function SpeculativeTrade() {
   const [buyerBroker, setBuyerBroker] = useState<number>(0);
 
   const [selectedGood, setSelectedGood] = useState<TradeGood | null>(null);
+  const [transactionTons, setTransactionTons] = useState<number>(1);
   
   // Purchase State
   const [purchaseRoll, setPurchaseRoll] = useState<number>(0);
@@ -103,8 +104,7 @@ export function SpeculativeTrade() {
     if (!selectedGood) return;
     const baseRoll = roll3D();
     const purchaseDm = calculateDM(selectedGood.purchaseDMs, sourceCodes);
-    const saleDm = calculateDM(selectedGood.saleDMs, sourceCodes); // Rule: minus supplier sale DM? "any DM from Sale column"
-    // Wait, Purchase Roll = 3D + Broker + Purchase DM - Sale DM (using source codes) - Supplier Broker
+    const saleDm = calculateDM(selectedGood.saleDMs, sourceCodes);
     const finalRoll = baseRoll + brokerSkill + purchaseDm - saleDm - supplierBroker;
     setPurchaseRoll(finalRoll);
     audioService.playConfirm();
@@ -115,7 +115,6 @@ export function SpeculativeTrade() {
     const baseRoll = roll3D();
     const saleDm = calculateDM(selectedGood.saleDMs, destCodes);
     const purchaseDm = calculateDM(selectedGood.purchaseDMs, destCodes);
-    // Sale Roll = 3D + Broker + Sale DM - Purchase DM (using dest codes) - Buyer Broker
     const finalRoll = baseRoll + brokerSkill + saleDm - purchaseDm - buyerBroker;
     setSaleRoll(finalRoll);
     audioService.playConfirm();
@@ -234,7 +233,21 @@ export function SpeculativeTrade() {
             <h3 style={{ margin: 0, color: '#00ff00' }}>[ {selectedGood.d66} ] {selectedGood.type.toUpperCase()}</h3>
             <button onClick={() => { setSelectedGood(null); audioService.playClick(); }} style={{ padding: '2px 8px', borderColor: '#00ff00', color: '#00ff00' }}>CLOSE</button>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-phosphor-dim)' }}>Qty: {selectedGood.tons} Tons | Base: Cr {selectedGood.basePrice.toLocaleString()}</p>
+           <div style={{ marginBottom: '15px', color: 'var(--color-phosphor-dim)' }}>
+             <div><strong>Base Price:</strong> Cr {selectedGood.basePrice.toLocaleString()}</div>
+             <div><strong>Availability:</strong> {Array.isArray(selectedGood.availability) ? selectedGood.availability.join(', ') : selectedGood.availability}</div>
+             <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <strong style={{ color: 'var(--color-phosphor)' }}>Quantity:</strong>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={transactionTons} 
+                  onChange={e => setTransactionTons(Math.max(1, Number(e.target.value)))}
+                  style={{ width: '80px', color: 'var(--color-phosphor)', borderColor: 'var(--color-phosphor-dim)' }}
+                /> 
+                <span style={{ fontSize: '0.8rem' }}> Tons (Roll: {selectedGood.tons})</span>
+             </div>
+           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
              {/* Purchase Column */}
@@ -251,11 +264,34 @@ export function SpeculativeTrade() {
                    </div>
                  )}
                </div>
-               {purchaseRoll !== 0 && (
-                 <div style={{ marginTop: '10px', fontSize: '1.2rem', color: '#00ff00' }}>
-                   Cost: Cr {Math.round(selectedGood.basePrice * getPriceMultiplier(purchaseRoll).purchase).toLocaleString()} / Ton <span style={{fontSize: '0.8rem'}}>({Math.round(getPriceMultiplier(purchaseRoll).purchase * 100)}%)</span>
-                 </div>
-               )}
+                {purchaseRoll !== 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '1.2rem', color: '#00ff00' }}>
+                    Cost: Cr {Math.round(selectedGood.basePrice * getPriceMultiplier(purchaseRoll).purchase).toLocaleString()} / Ton <span style={{fontSize: '0.8rem'}}>({Math.round(getPriceMultiplier(purchaseRoll).purchase * 100)}%)</span>
+                  </div>
+                )}
+                {purchaseRoll !== 0 && shipData && updateShipData && (
+                  <button onClick={() => {
+                    const pricePerTon = Math.round(selectedGood.basePrice * getPriceMultiplier(purchaseRoll).purchase);
+                    const totalCost = pricePerTon * transactionTons;
+                    if (shipData.credits < totalCost) {
+                      alert("Not enough credits!");
+                      return;
+                    }
+                    if (shipData.availableCargoTons < transactionTons) {
+                      alert("Not enough cargo space!");
+                      return;
+                    }
+                    const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Expense', amount: totalCost, description: `Purchased ${transactionTons}t of ${selectedGood.type}` };
+                    updateShipData({
+                      credits: shipData.credits - totalCost,
+                      availableCargoTons: shipData.availableCargoTons - transactionTons,
+                      ledgers: [...(shipData.ledgers || []), newLedger]
+                    });
+                    audioService.playClick();
+                  }} style={{ marginTop: '10px', width: '100%', borderColor: '#00ff00', color: '#00ff00', fontSize: '0.9rem' }}>
+                    BUY FOR Cr {(Math.round(selectedGood.basePrice * getPriceMultiplier(purchaseRoll).purchase) * transactionTons).toLocaleString()} (-{transactionTons} TONS)
+                  </button>
+                )}
              </div>
 
              {/* Sale Column */}
@@ -272,11 +308,26 @@ export function SpeculativeTrade() {
                    </div>
                  )}
                </div>
-               {saleRoll !== 0 && (
-                 <div style={{ marginTop: '10px', fontSize: '1.2rem', color: '#dca3ff' }}>
-                   Sell: Cr {Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale).toLocaleString()} / Ton <span style={{fontSize: '0.8rem'}}>({Math.round(getPriceMultiplier(saleRoll).sale * 100)}%)</span>
-                 </div>
-               )}
+                {saleRoll !== 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '1.2rem', color: '#dca3ff' }}>
+                    Sell: Cr {Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale).toLocaleString()} / Ton <span style={{fontSize: '0.8rem'}}>({Math.round(getPriceMultiplier(saleRoll).sale * 100)}%)</span>
+                  </div>
+                )}
+                {saleRoll !== 0 && shipData && updateShipData && (
+                  <button onClick={() => {
+                    const pricePerTon = Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale);
+                    const totalSale = pricePerTon * transactionTons;
+                    const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Income', amount: totalSale, description: `Sold ${transactionTons}t of ${selectedGood.type}` };
+                    updateShipData({
+                      credits: shipData.credits + totalSale,
+                      availableCargoTons: Math.min(shipData.maxCargoTons, shipData.availableCargoTons + transactionTons),
+                      ledgers: [...(shipData.ledgers || []), newLedger]
+                    });
+                    audioService.playClick();
+                  }} style={{ marginTop: '10px', width: '100%', borderColor: '#dca3ff', color: '#dca3ff', fontSize: '0.9rem' }}>
+                    SELL FOR Cr {(Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale) * transactionTons).toLocaleString()} (+{transactionTons} TONS)
+                  </button>
+                )}
              </div>
           </div>
         </div>
@@ -315,6 +366,7 @@ export function SpeculativeTrade() {
             <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
               <th style={{ padding: '8px' }}>D66</th>
               <th style={{ padding: '8px' }}>Type</th>
+              <th style={{ padding: '8px' }}>Tons</th>
               <th style={{ padding: '8px' }}>Base Cr</th>
               <th style={{ padding: '8px' }}>Source Purch DM</th>
               <th style={{ padding: '8px', color: '#dca3ff' }}>Dest Sale DM</th>
@@ -353,6 +405,7 @@ export function SpeculativeTrade() {
                     {g.isIllegal && <span style={{ color: '#ff5555', marginLeft: '5px' }}>[ILGL]</span>}
                     {isSourceAvail ? <span style={{ color: '#00ff00', marginLeft: '5px', fontSize:'0.7rem' }}>[LOCAL]</span> : null}
                   </td>
+                  <td style={{ padding: '8px' }}>{g.tons}</td>
                   <td style={{ padding: '8px' }}>{g.basePrice.toLocaleString()}</td>
                   <td style={{ padding: '8px', color: srcDm > 0 ? '#00ff00' : 'var(--color-phosphor)' }}>{srcDm > 0 ? `+${srcDm}` : srcDm}</td>
                   <td style={{ padding: '8px', color: destDm > 0 ? '#dca3ff' : 'var(--color-phosphor)' }}>{destDm > 0 ? `+${destDm}` : destDm}</td>
