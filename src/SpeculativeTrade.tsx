@@ -73,6 +73,8 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
   
   const [viewMode, setViewMode] = useState<'market' | 'all'>('market');
   const [randomRolls, setRandomRolls] = useState<number[]>([]);
+  
+  const [popupMessage, setPopupMessage] = useState<string>('');
 
   const handleSourceUwp = (val: string) => {
     setSourceUwp(val);
@@ -303,11 +305,13 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                     const pricePerTon = Math.round(selectedGood.basePrice * getPriceMultiplier(purchaseRoll).purchase);
                     const totalCost = pricePerTon * transactionTons;
                     if (shipData.credits < totalCost) {
-                      alert("Not enough credits!");
+                      setPopupMessage("[ ERROR ] Insufficient corporate funds for this transaction.");
+                      audioService.playError();
                       return;
                     }
                     if (shipData.availableCargoTons < transactionTons) {
-                      alert("Not enough cargo space!");
+                      setPopupMessage("[ WARNING ] Insufficient cargo space available for this lot.");
+                      audioService.playError();
                       return;
                     }
                     const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Expense', amount: totalCost, description: `Purchased ${transactionTons}t of ${selectedGood.type}` };
@@ -352,6 +356,13 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                 )}
                 {saleRoll !== 0 && shipData && updateShipData && (
                   <button onClick={() => {
+                    const ownedTonsForGood = (shipData.tradeGoods || []).filter(t => t.d66 === selectedGood.d66).reduce((acc, curr) => acc + curr.tons, 0);
+                    if (transactionTons > ownedTonsForGood) {
+                      setPopupMessage(`[ ERROR ] Cannot sell ${transactionTons}T. Only ${ownedTonsForGood}T of [${selectedGood.d66}] ${selectedGood.type} currently loaded in cargo hold.`);
+                      audioService.playError();
+                      return;
+                    }
+
                     const pricePerTon = Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale);
                     const totalSale = pricePerTon * transactionTons;
                     const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Income', amount: totalSale, description: `Sold ${transactionTons}t of ${selectedGood.type}` };
@@ -529,8 +540,31 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
               <p><b>Red (Red Zone):</b> Interdicted worlds. Travel is illegal; trade here is high-risk smuggling.</p>
             </div>
           </div>
+          </div>
         </div>
       )}
+
+      {/* Error Popup overlay */}
+      {popupMessage && (
+        <div 
+           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}
+           onClick={() => setPopupMessage('')}>
+          <div className="panel" onClick={e => e.stopPropagation()} style={{ border: '2px solid #ff5555', boxShadow: '0 0 30px rgba(255, 85, 85, 0.4)', background: '#050000', padding: '30px', maxWidth: '500px', textAlign: 'center' }}>
+            <h2 style={{ color: '#ff5555', marginTop: 0, letterSpacing: '2px' }}>SYSTEM ALERT</h2>
+            <div style={{ fontSize: '1.2rem', margin: '30px 0', color: 'var(--color-phosphor)' }}>
+              {popupMessage}
+            </div>
+            <div style={{ marginTop: '30px' }}>
+              <button 
+                onClick={() => { setPopupMessage(''); audioService.playClick(); }}
+                style={{ borderColor: '#ff5555', color: '#ff5555', padding: '10px 40px', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                ACKNOWLEDGE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
