@@ -136,21 +136,21 @@ export function SpeculativeTrade() {
              <span>Quick Parse UWP:</span>
              <input type="text" value={sourceUwp} onChange={e => handleSourceUwp(e.target.value.toUpperCase())} placeholder="e.g. A788899-A" style={{width: '120px'}}/>
           </div>
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+          <div style={{ marginTop: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '1rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
               <button 
                 onClick={() => { setShowLegend(true); audioService.playClick(); }}
-                style={{ padding: '0px 4px', fontSize: '0.7rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
+                style={{ padding: '2px 8px', fontSize: '0.9rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
               >[?]</button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {ALL_CODES.map(c => (
                 <button 
                   key={c} 
                   onClick={() => toggleSourceCode(c)}
                   style={{ 
-                    padding: '2px 5px', fontSize: '0.8rem', 
+                    padding: '6px 12px', fontSize: '1rem', fontWeight: 'bold', minWidth: '45px', textAlign: 'center',
                     background: sourceCodes.includes(c) ? 'var(--color-phosphor)' : 'transparent',
                     color: sourceCodes.includes(c) ? 'var(--color-bg)' : 'var(--color-phosphor-dim)',
                     borderColor: 'var(--color-phosphor-dim)'
@@ -179,21 +179,21 @@ export function SpeculativeTrade() {
              <span>Quick Parse UWP:</span>
              <input type="text" value={destUwp} onChange={e => handleDestUwp(e.target.value.toUpperCase())} placeholder="e.g. C543211-5" style={{width: '120px', borderColor: '#dca3ff'}}/>
           </div>
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
+          <div style={{ marginTop: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '1rem', color: 'var(--color-phosphor-dim)' }}>Active Trade Codes:</span>
               <button 
                 onClick={() => { setShowLegend(true); audioService.playClick(); }}
-                style={{ padding: '0px 4px', fontSize: '0.7rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
+                style={{ padding: '2px 8px', fontSize: '0.9rem', borderColor: 'var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)' }}
               >[?]</button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {ALL_CODES.map(c => (
                 <button 
                   key={c} 
                   onClick={() => toggleDestCode(c)}
                   style={{ 
-                    padding: '2px 5px', fontSize: '0.8rem', 
+                    padding: '6px 12px', fontSize: '1rem', fontWeight: 'bold', minWidth: '45px', textAlign: 'center',
                     background: destCodes.includes(c) ? '#dca3ff' : 'transparent',
                     color: destCodes.includes(c) ? '#050000' : '#dca3ff',
                     borderColor: '#dca3ff'
