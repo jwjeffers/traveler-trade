@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { ShipData, LedgerEntry, FreightLot, TradeGoodItem, Passenger, MiscCargoItem } from './ShipStatus';
 import { audioService } from './audioService';
 import { TRADE_GOODS } from './tradeGoodsData';

@@ -252,7 +252,7 @@ const CriticalTrack = ({ name, value, onChange }: { name: string, value: number,
 };
 
 
-export function ShipStatus({ data, updateData, allShips, onTransfer, companyRoster }: { data: ShipData, updateData: (d: Partial<ShipData>) => void, allShips?: ShipData[], onTransfer?: (itemObj: any, itemType: 'Passenger' | 'Freight' | 'Mail' | 'Misc' | 'TradeGood', destShipId: string, isSale: boolean, salePrice: number) => void, companyRoster?: CrewMember[] }) {
+export function ShipStatus({ data, updateData, allShips, onTransfer, companyRoster }: { data: ShipData, updateData: (d: Partial<ShipData>) => void, allShips?: ShipData[], onTransfer?: (cat: 'Passenger' | 'Freight' | 'Trade' | 'Misc' | 'Mail', item: any, sourceShipId: string, targetShipId: string, isSale: boolean, price: number) => void, companyRoster?: CrewMember[] }) {
   
   const [transferPopup, setTransferPopup] = React.useState<{ isOpen: boolean, itemObj: any, itemType: 'Passenger' | 'Freight' | 'Trade' | 'Misc' | 'Mail' } | null>(null);
   const [targetShipId, setTargetShipId] = React.useState<string>('');

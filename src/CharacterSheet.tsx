@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import type { CrewMember, CharacterData } from './ShipStatus';
 
 const calculateDM = (stat: number) => Math.floor((stat - 6) / 2);
