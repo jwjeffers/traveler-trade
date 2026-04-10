@@ -67,6 +67,9 @@ export function SpeculativeTrade() {
   // Sale State
   const [saleRoll, setSaleRoll] = useState<number>(0);
   const [showLegend, setShowLegend] = useState(false);
+  
+  const [viewMode, setViewMode] = useState<'market' | 'all'>('market');
+  const [randomRolls, setRandomRolls] = useState<number[]>([]);
 
   const handleSourceUwp = (val: string) => {
     setSourceUwp(val);
@@ -122,6 +125,14 @@ export function SpeculativeTrade() {
     const entry = MODIFIED_PRICE_TABLE.find(t => roll <= t.maxBound);
     if (!entry) return MODIFIED_PRICE_TABLE[MODIFIED_PRICE_TABLE.length - 1];
     return entry;
+  };
+
+  const rollRandomD66 = () => {
+    const tens = Math.floor(Math.random() * 6) + 1;
+    const ones = Math.floor(Math.random() * 6) + 1;
+    const result = tens * 10 + ones;
+    setRandomRolls(prev => [...prev, result]);
+    audioService.playKeystroke();
   };
 
   return (
@@ -272,6 +283,32 @@ export function SpeculativeTrade() {
       )}
 
       {/* TABLE */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={() => { setViewMode('market'); audioService.playClick(); }} 
+            style={{ padding: '5px 15px', fontSize: '1rem', borderColor: viewMode==='market' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', color: viewMode==='market' ? 'var(--color-bg)' : 'var(--color-phosphor)', background: viewMode==='market' ? 'var(--color-phosphor)' : 'transparent' }}
+          >LOCAL MARKET</button>
+          <button 
+            onClick={() => { setViewMode('all'); audioService.playClick(); }} 
+            style={{ padding: '5px 15px', fontSize: '1rem', borderColor: viewMode==='all' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', color: viewMode==='all' ? 'var(--color-bg)' : 'var(--color-phosphor)', background: viewMode==='all' ? 'var(--color-phosphor)' : 'transparent' }}
+          >VIEW ENTIRE CHART</button>
+        </div>
+        
+        {viewMode === 'market' && (
+           <div style={{ display: 'flex', gap: '10px' }}>
+             {randomRolls.length > 0 && (
+               <button onClick={() => setRandomRolls([])} style={{ padding: '5px 15px', fontSize: '1rem', borderColor: '#ff5555', color: '#ff5555' }}>
+                 CLEAR RANDOM
+               </button>
+             )}
+             <button onClick={rollRandomD66} style={{ padding: '5px 15px', fontSize: '1rem' }}>
+               + FIND SUPPLIER (D66)
+             </button>
+           </div>
+        )}
+      </div>
+
       <div style={{ overflowY: 'auto', maxHeight: '500px', border: '1px solid var(--color-phosphor-dim)' }}>
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 1 }}>
@@ -285,7 +322,14 @@ export function SpeculativeTrade() {
             </tr>
           </thead>
           <tbody>
-            {TRADE_GOODS.map(g => {
+            {TRADE_GOODS.filter(g => {
+              if (viewMode === 'all') return true;
+              let isSourceAvail = g.availability === 'All';
+              if (Array.isArray(g.availability) && g.availability.some(a => sourceCodes.includes(a))) {
+                isSourceAvail = true;
+              }
+              return isSourceAvail || randomRolls.includes(g.d66);
+            }).map(g => {
               const srcDm = calculateDM(g.purchaseDMs, sourceCodes);
               const destDm = calculateDM(g.saleDMs, destCodes);
               const isCommon = g.availability === 'All';
@@ -295,6 +339,7 @@ export function SpeculativeTrade() {
               if (Array.isArray(g.availability)) {
                 if (g.availability.some(a => sourceCodes.includes(a))) isSourceAvail = true;
               }
+              const isRandom = randomRolls.includes(g.d66) && !isSourceAvail;
 
               return (
                 <tr key={g.d66} style={{ 
@@ -302,7 +347,7 @@ export function SpeculativeTrade() {
                   opacity: g.d66 === 66 ? 0.3 : 1,
                   background: selectedGood?.d66 === g.d66 ? 'rgba(0,255,0,0.1)' : 'transparent'
                 }}>
-                  <td style={{ padding: '8px' }}>{g.d66}</td>
+                  <td style={{ padding: '8px' }}>{g.d66} {isRandom && <span style={{ color: '#ffdd00', marginLeft: '5px' }}>★</span>}</td>
                   <td style={{ padding: '8px' }}>
                     {g.type}
                     {g.isIllegal && <span style={{ color: '#ff5555', marginLeft: '5px' }}>[ILGL]</span>}
