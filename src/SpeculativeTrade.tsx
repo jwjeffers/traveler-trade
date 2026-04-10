@@ -540,7 +540,6 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
               <p><b>Red (Red Zone):</b> Interdicted worlds. Travel is illegal; trade here is high-risk smuggling.</p>
             </div>
           </div>
-          </div>
         </div>
       )}
 
