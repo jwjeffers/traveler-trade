@@ -4,11 +4,12 @@ import { ShipStatus } from './ShipStatus';
 import { useShipData } from './useShipData';
 import { PassengerBroker } from './PassengerBroker';
 import { FreightBroker } from './FreightBroker';
+import { SpeculativeTrade } from './SpeculativeTrade';
 import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'starmap' | 'sysman'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'speculative' | 'starmap' | 'sysman'>('dashboard');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
   const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit' | 'media', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void, iframeUrl?: string } | null>(null);
   const [promptValue, setPromptValue] = useState('');
@@ -108,6 +109,9 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           </button>
           <button onClick={() => { setActiveTab('freight'); audioService.playClick(); }}>
             {activeTab === 'freight' ? '> Cargo Broker' : 'Cargo Broker'}
+          </button>
+          <button onClick={() => { setActiveTab('speculative'); audioService.playClick(); }}>
+            {activeTab === 'speculative' ? '> Speculative Trade' : 'Speculative Trade'}
           </button>
           <button onClick={() => { setActiveTab('starmap'); audioService.playClick(); }}>
             {activeTab === 'starmap' ? '> Astrogation Map' : 'Astrogation Map'}
@@ -562,6 +566,13 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           {activeTab === 'freight' && activeShip && (
             <>
               <FreightBroker shipData={activeShip} updateShipData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+            </>
+          )}
+
+          {activeTab === 'speculative' && activeShip && (
+            <>
+              <SpeculativeTrade />
               <ShipStatus data={activeShip} updateData={updateActiveShip} />
             </>
           )}
