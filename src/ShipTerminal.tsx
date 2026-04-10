@@ -66,8 +66,9 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
     else if (totalCrits >= 5) triggeredClass = 'glitch-major';
     else if (totalCrits > 0) triggeredClass = 'glitch-minor';
     
+    setGlitchClass(triggeredClass);
+    
     if (triggeredClass) {
-      setGlitchClass(triggeredClass);
       const timer = setTimeout(() => {
         setGlitchClass('');
       }, 2000);
