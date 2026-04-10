@@ -492,7 +492,17 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                               updateCompanyData({ crewRoster: updatedRoster, ships: updatedShips });
                            }
                          });
-                      }}>[ DISTRIBUTE SHARES ]</button>
+                       }}>[ DISTRIBUTE SHARES ]</button>
+                      <button style={{ marginTop: '15px', flex: 1, padding: '10px', borderColor: '#ff5555', color: '#ff5555' }} onClick={() => {
+                         setModalConfig({
+                           title: 'CRITICAL: PURGE ALL PERSONNEL',
+                           message: `Are you absolutely certain you wish to wipe the entire crew roster? This action is irreversible and all Character Sheets and Company Assignments will be permanently deleted.`,
+                           type: 'confirm',
+                           onConfirm: () => {
+                             updateCompanyData({ crewRoster: [] });
+                           }
+                         });
+                      }}>[ PURGE ROSTER ]</button>
                     </div>
                   </div>
                 </>
