@@ -1,5 +1,7 @@
 
 
+import * as React from 'react';
+
 export interface Passenger {
   id: string;
   name: string;
@@ -56,6 +58,36 @@ export interface MiscCargoItem {
   tons: number;
 }
 
+export interface CharacterData {
+  title: string;
+  age: string;
+  species: string;
+  homeworld: string;
+  traits: string;
+  str: number;
+  dex: number;
+  end: number;
+  int: number;
+  edu: number;
+  soc: number;
+  skills: { id: string; name: string; level: number }[];
+  equipment: string;
+  weapons: string;
+  armor: string;
+  augments: string;
+  trainingSkill: string;
+  trainingWeeks: string;
+  trainingPeriods: string;
+  wounds: string;
+  careers: string;
+  history: string;
+  allies: string;
+  contacts: string;
+  rivals: string;
+  enemies: string;
+  personalCredits: number;
+}
+
 export interface CrewMember {
   id: string;
   name: string;
@@ -64,6 +96,7 @@ export interface CrewMember {
   salary: number;
   payrollShare: number;
   assignedShipId?: string;
+  characterData?: CharacterData;
 }
 
 export interface LedgerEntry {
@@ -219,8 +252,13 @@ const CriticalTrack = ({ name, value, onChange }: { name: string, value: number,
 };
 
 
-export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (u: Partial<ShipData>) => void }) {
+export function ShipStatus({ data, updateData, allShips, onTransfer, companyRoster }: { data: ShipData, updateData: (d: Partial<ShipData>) => void, allShips?: ShipData[], onTransfer?: (itemObj: any, itemType: 'Passenger' | 'Freight' | 'Mail' | 'Misc' | 'TradeGood', destShipId: string, isSale: boolean, salePrice: number) => void, companyRoster?: CrewMember[] }) {
   
+  const [transferPopup, setTransferPopup] = React.useState<{ isOpen: boolean, itemObj: any, itemType: 'Passenger' | 'Freight' | 'Trade' | 'Misc' | 'Mail' } | null>(null);
+  const [targetShipId, setTargetShipId] = React.useState<string>('');
+  const [isSale, setIsSale] = React.useState<boolean>(false);
+  const [salePrice, setSalePrice] = React.useState<string>('');
+
   const handleChange = (key: keyof ShipData, value: any) => {
     updateData({ [key]: value });
   };
@@ -286,12 +324,17 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                     <h4>FINANCES (Cr)</h4>
                     {['fuelCost', 'mortgage', 'lifeSupport', 'salaries', 'maintenance'].map((key) => {
                        const label = { fuelCost: 'Fuel', mortgage: 'Mortgage', lifeSupport: 'Life Support', salaries: 'Salaries', maintenance: 'Maintenance' }[key as keyof typeof data.finances];
-                       const val = (data.finances as any)[key] || 0;
+                       const isSalaries = key === 'salaries';
+                       const val = isSalaries && companyRoster ? companyRoster.filter(c => c.assignedShipId === data.id).reduce((acc, c) => acc + (c.salary || 0), 0) : ((data.finances as any)[key] || 0);
                        return (
                          <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'nowrap' }}>
                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '5px' }}>{label}:</span> 
-                           <input type="number" style={{ width: '60px', flexShrink: 0 }} value={val} 
-                             onChange={e => handleChange('finances', {...data.finances, [key]: parseInt(e.target.value)||0})} />
+                           {isSalaries ? (
+                             <span style={{ width: '60px', flexShrink: 0, textAlign: 'right', display: 'inline-block', padding: '2px', borderBottom: '1px dotted var(--color-phosphor-dim)' }}>{val}</span>
+                           ) : (
+                             <input type="number" style={{ width: '60px', flexShrink: 0 }} value={val} 
+                               onChange={e => handleChange('finances', {...data.finances, [key]: parseInt(e.target.value)||0})} />
+                           )}
                            <button 
                              onClick={() => {
                                const cost = val;
@@ -442,23 +485,28 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                 style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px' }}>
                                 Deliver
                               </button>
-                              <button 
-                                onClick={() => {
-                                  const remaining = data.passengers.filter(pass => pass.id !== p.id);
-                                  const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: -p.revenue, description: `Refunded ${p.type} Passenger Ticket (${p.name || 'Unknown'})` };
-                                  updateData({ 
-                                    passengers: remaining,
-                                    availableStaterooms: data.availableStaterooms + p.staterooms,
-                                    availableLowBerths: data.availableLowBerths + p.lowBerths,
-                                    availableCargoTons: data.availableCargoTons + p.cargo,
-                                    credits: data.credits - p.revenue,
-                                    ledgers: [...(data.ledgers || []), newLedger]
-                                  });
-                                }}
-                                style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>
-                                Refund
-                              </button>
-                            </div>
+                                <button 
+                                  onClick={() => {
+                                    const remaining = data.passengers.filter(pass => pass.id !== p.id);
+                                    const newLedger: LedgerEntry = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense', amount: -p.revenue, description: `Refunded ${p.type} Passenger Ticket (${p.name || 'Unknown'})` };
+                                    updateData({ 
+                                      passengers: remaining,
+                                      availableStaterooms: data.availableStaterooms + p.staterooms,
+                                      availableLowBerths: data.availableLowBerths + p.lowBerths,
+                                      availableCargoTons: data.availableCargoTons + p.cargo,
+                                      credits: data.credits - p.revenue,
+                                      ledgers: [...(data.ledgers || []), newLedger]
+                                    });
+                                  }}
+                                  style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>
+                                  Refund
+                                </button>
+                                <button
+                                  onClick={() => setTransferPopup({ isOpen: true, itemObj: p, itemType: 'Passenger' })}
+                                  style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ffff00', color: '#ffff00' }}>
+                                  Transfer
+                                </button>
+                              </div>
                           </td>
                         </tr>
                       ))}
@@ -512,6 +560,11 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                 style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>
                                 Refund
                               </button>
+                                <button
+                                  onClick={() => setTransferPopup({ isOpen: true, itemObj: f, itemType: 'Freight' })}
+                                  style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ffff00', color: '#ffff00' }}>
+                                  Transfer
+                                </button>
                             </div>
                           </td>
                         </tr>
@@ -547,6 +600,11 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                 style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ff6666', color: '#ff6666' }}>
                                 Refund
                               </button>
+                                <button
+                                  onClick={() => setTransferPopup({ isOpen: true, itemObj: m, itemType: 'Mail' })}
+                                  style={{ padding: '2px 5px', fontSize: '0.8rem', marginTop: '5px', borderColor: '#ffff00', color: '#ffff00' }}>
+                                  Transfer
+                                </button>
                             </div>
                           </td>
                         </tr>
@@ -556,14 +614,14 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                 </div>
               )}
 
-              <h3 style={{marginTop: '30px', color: '#00ff00'}}>Current Trade Items</h3>
+              <h3 style={{marginTop: '30px'}}>Current Trade Items</h3>
               {(!data.tradeGoods || data.tradeGoods.length === 0) ? (
                 <p style={{ color: 'var(--color-phosphor-dim)' }}>No speculative cargo currently loaded.</p>
               ) : (
                 <div style={{overflowY: 'auto', maxHeight: '300px'}}>
                   <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #00ff00' }}>
+                      <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
                         <th>Goods</th><th>Tons</th><th>Base Cost</th><th></th>
                       </tr>
                     </thead>
@@ -585,6 +643,11 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ff6666', color: '#ff6666' }}>
                               Dump Cargo
                             </button>
+                            <button
+                               onClick={() => setTransferPopup({ isOpen: true, itemObj: tg, itemType: 'Trade' })}
+                               style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ffff00', color: '#ffff00', marginLeft: '5px' }}>
+                               Transfer
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -593,14 +656,14 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                 </div>
               )}
 
-              <h3 style={{marginTop: '30px', color: '#00ff00'}}>Miscellaneous Cargo</h3>
+              <h3 style={{marginTop: '30px'}}>Miscellaneous Cargo</h3>
               {(!data.miscCargo || data.miscCargo.length === 0) ? (
                 <p style={{ color: 'var(--color-phosphor-dim)' }}>No miscellaneous cargo stored.</p>
               ) : (
                 <div style={{overflowY: 'auto', maxHeight: '300px'}}>
                   <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #00ff00' }}>
+                      <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
                         <th>Description</th><th>Tons</th><th></th>
                       </tr>
                     </thead>
@@ -621,6 +684,11 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                               style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ff6666', color: '#ff6666' }}>
                               Dump Cargo
                             </button>
+                            <button
+                               onClick={() => setTransferPopup({ isOpen: true, itemObj: mc, itemType: 'Misc' })}
+                               style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ffff00', color: '#ffff00', marginLeft: '5px' }}>
+                               Transfer
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -631,6 +699,70 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
             </div>
           </div>
         </div>
+
+      {transferPopup && transferPopup.isOpen && allShips && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setTransferPopup(null)}>
+          <div className="panel" onClick={e => e.stopPropagation()} style={{ background: '#050000', padding: '30px', maxWidth: '500px' }}>
+            <h2 style={{ color: 'var(--color-phosphor)', marginTop: 0 }}>TRANSFER ASSET</h2>
+            <p>Moving {transferPopup.itemType} from {data.shipName}</p>
+            
+            <div className="ship-field-row" style={{ marginBottom: '15px' }}>
+              <span>Destination Vessel:</span>
+              <select value={targetShipId} onChange={e => setTargetShipId(e.target.value)} style={{ flex: 1 }}>
+                <option value="">-- Select Vessel --</option>
+                {allShips.filter(s => s.id !== data.id).map(s => (
+                  <option key={s.id} value={s.id}>{s.shipName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ship-field-row" style={{ marginBottom: '15px' }}>
+              <span>Transfer Type:</span>
+              <select value={isSale ? 'sale' : 'simple'} onChange={e => setIsSale(e.target.value === 'sale')} style={{ flex: 1 }}>
+                <option value="simple">Manifest Swap (Free)</option>
+                <option value="sale">Internal Sale (Credits)</option>
+              </select>
+            </div>
+
+            {isSale && (
+              <div className="ship-field-row" style={{ marginBottom: '15px' }}>
+                <span>Sale Price (Cr):</span>
+                <input type="number" min="0" value={salePrice} onChange={e => setSalePrice(e.target.value)} style={{ flex: 1 }} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button 
+                onClick={() => {
+                  if (!targetShipId) {
+                    alert('Select a destination vessel.');
+                    return;
+                  }
+                  if (onTransfer) {
+                    onTransfer(transferPopup.itemType, transferPopup.itemObj, data.id, targetShipId, isSale, parseInt(salePrice) || 0);
+                  }
+                  setTransferPopup(null);
+                  setTargetShipId('');
+                  setIsSale(false);
+                  setSalePrice('');
+                }}
+                style={{ flex: 1, padding: '10px', fontWeight: 'bold' }}
+              >
+                EXECUTE TRANSFER
+              </button>
+              <button 
+                onClick={() => {
+                  setTransferPopup(null);
+                  setTargetShipId('');
+                  setIsSale(false);
+                  setSalePrice('');
+                }} 
+                style={{ padding: '10px', borderColor: '#ff6666', color: '#ff6666' }}>CANCEL</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
   );
 }

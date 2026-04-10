@@ -6,11 +6,13 @@ import { PassengerBroker } from './PassengerBroker';
 import { FreightBroker } from './FreightBroker';
 import { SpeculativeTrade } from './SpeculativeTrade';
 import { InventoryManager } from './InventoryManager';
+import { CharacterSheet } from './CharacterSheet';
 import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman'>('dashboard');
+  const [activeCharacterId, setActiveCharacterId] = useState<string>('');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
   const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit' | 'media', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void, iframeUrl?: string } | null>(null);
   const [promptValue, setPromptValue] = useState('');
@@ -32,6 +34,81 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   const updateActiveShip = (updates: any) => {
     if (!activeShip) return;
     const updatedShips = companyData.ships.map(s => s.id === activeShip.id ? { ...s, ...updates } : s);
+    updateCompanyData({ ships: updatedShips });
+  };
+
+  const handleTransferItem = (
+    cat: 'Passenger' | 'Freight' | 'Trade' | 'Misc' | 'Mail',
+    item: any,
+    sourceShipId: string,
+    targetShipId: string,
+    isSale: boolean,
+    price: number
+  ) => {
+    if (!companyData || !companyData.ships) return;
+    const sourceShip = companyData.ships.find(s => s.id === sourceShipId);
+    const targetShip = companyData.ships.find(s => s.id === targetShipId);
+    if (!sourceShip || !targetShip) return;
+
+    let sUpdates: any = {};
+    let tUpdates: any = {};
+
+    // Remove from source, add to target. And handle space metrics.
+    if (cat === 'Passenger') {
+      sUpdates.passengers = sourceShip.passengers.filter(p => p.id !== item.id);
+      sUpdates.availableStaterooms = sourceShip.availableStaterooms + item.staterooms;
+      sUpdates.availableLowBerths = sourceShip.availableLowBerths + item.lowBerths;
+      sUpdates.availableCargoTons = sourceShip.availableCargoTons + item.cargo;
+
+      tUpdates.passengers = [...(targetShip.passengers || []), { ...item, id: 'trx-' + Date.now() }];
+      tUpdates.availableStaterooms = targetShip.availableStaterooms - item.staterooms;
+      tUpdates.availableLowBerths = targetShip.availableLowBerths - item.lowBerths;
+      tUpdates.availableCargoTons = targetShip.availableCargoTons - item.cargo;
+    } else if (cat === 'Freight') {
+      sUpdates.freightLots = sourceShip.freightLots.filter(f => f.id !== item.id);
+      sUpdates.availableCargoTons = sourceShip.availableCargoTons + item.tons;
+
+      tUpdates.freightLots = [...(targetShip.freightLots || []), { ...item, id: 'trx-' + Date.now() }];
+      tUpdates.availableCargoTons = targetShip.availableCargoTons - item.tons;
+    } else if (cat === 'Trade') {
+      sUpdates.tradeGoods = (sourceShip.tradeGoods || []).filter(t => t.id !== item.id);
+      sUpdates.availableCargoTons = sourceShip.availableCargoTons + item.tons;
+
+      tUpdates.tradeGoods = [...(targetShip.tradeGoods || []), { ...item, id: 'trx-' + Date.now() }];
+      tUpdates.availableCargoTons = targetShip.availableCargoTons - item.tons;
+    } else if (cat === 'Misc') {
+      sUpdates.miscCargo = (sourceShip.miscCargo || []).filter(m => m.id !== item.id);
+      sUpdates.availableCargoTons = sourceShip.availableCargoTons + item.tons;
+
+      tUpdates.miscCargo = [...(targetShip.miscCargo || []), { ...item, id: 'trx-' + Date.now() }];
+      tUpdates.availableCargoTons = targetShip.availableCargoTons - item.tons;
+    } else if (cat === 'Mail') {
+      sUpdates.mailContracts = sourceShip.mailContracts.filter(m => m.id !== item.id);
+      sUpdates.availableCargoTons = sourceShip.availableCargoTons + item.totalTons;
+
+      tUpdates.mailContracts = [...(targetShip.mailContracts || []), { ...item, id: 'trx-' + Date.now() }];
+      tUpdates.availableCargoTons = targetShip.availableCargoTons - item.totalTons;
+    }
+
+    if (isSale) {
+      // Source sells, gets income. Target buys, gets expense.
+      sUpdates.credits = sourceShip.credits + price;
+      tUpdates.credits = targetShip.credits - price;
+
+      const itemName = item.type || item.description || item.name || 'Unknown Item';
+      const sLedger = { id: 'ledg-' + Date.now() + 'S', timestamp: new Date().toISOString(), type: 'Income', amount: price, description: `Internal Sale to ${targetShip.shipName} (${itemName})` };
+      const tLedger = { id: 'ledg-' + Date.now() + 'T', timestamp: new Date().toISOString(), type: 'Expense', amount: price, description: `Internal Purchase from ${sourceShip.shipName} (${itemName})` };
+
+      sUpdates.ledgers = [...(sourceShip.ledgers || []), sLedger];
+      tUpdates.ledgers = [...(targetShip.ledgers || []), tLedger];
+    }
+
+    const updatedShips = companyData.ships.map(s => {
+      if (s.id === sourceShipId) return { ...s, ...sUpdates };
+      if (s.id === targetShipId) return { ...s, ...tUpdates };
+      return s;
+    });
+
     updateCompanyData({ ships: updatedShips });
   };
 
@@ -102,6 +179,9 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             </div>
           )}
 
+          <button onClick={() => { setActiveTab('characters'); audioService.playClick(); }}>
+            {activeTab === 'characters' ? '> Character Sheets' : 'Character Sheets'}
+          </button>
           <button onClick={() => { setActiveTab('dashboard'); audioService.playClick(); }}>
             {activeTab === 'dashboard' ? '> Ship Status' : 'Ship Status'}
           </button>
@@ -338,17 +418,82 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                                updateCompanyData({ crewRoster: arr });
                             }} style={{ width: '60px' }} /></td>
                             <td>
-                              <button onClick={() => updateCompanyData({ crewRoster: (companyData.crewRoster || []).filter(c => c.id !== crew.id) })} style={{ color: '#ff5555', borderColor: '#ff5555', padding: '2px 5px', marginTop: '5px' }}>X</button>
+                              <button onClick={() => {
+                                 setModalConfig({
+                                   title: 'CONFIRM ROSTER TERMINATION',
+                                   message: `Are you sure you wish to terminate the contract for ${crew.name}?`,
+                                   type: 'confirm',
+                                   onConfirm: () => {
+                                      updateCompanyData({ crewRoster: (companyData.crewRoster || []).filter(c => c.id !== crew.id) });
+                                   }
+                                 });
+                              }} style={{ color: '#ff5555', borderColor: '#ff5555', padding: '2px 5px', marginTop: '5px' }}>X</button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    <button style={{ marginTop: '15px', width: '100%', padding: '10px' }} onClick={() => {
-                       updateCompanyData({ 
-                         crewRoster: [...(companyData?.crewRoster || []), { id: Math.random().toString(), name: 'New Crew', roles: 'Crew', type: 'NPC', salary: 0, payrollShare: 1 }] 
-                       });
-                    }}>+ ADD CREW ENTITY</button>
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                      <button style={{ marginTop: '15px', flex: 1, padding: '10px' }} onClick={() => {
+                         updateCompanyData({ 
+                           crewRoster: [...(companyData?.crewRoster || []), { id: Math.random().toString(), name: 'New Crew', roles: 'Crew', type: 'NPC', salary: 0, payrollShare: 1 }] 
+                         });
+                      }}>+ ADD CREW ENTITY</button>
+                      <button style={{ marginTop: '15px', flex: 1, padding: '10px', borderColor: '#00ff00', color: '#00ff00' }} onClick={() => {
+                         setModalConfig({
+                           title: 'PAYOUT CREW SHARES',
+                           message: `Enter the total profit amount to distribute. This will be deducted from the active ship (${activeShip?.shipName || 'No active ship'}) and paid to Characters based on their designated Payroll Share.`,
+                           type: 'prompt',
+                           onPromptSubmit: (val) => {
+                              const total = parseInt(val);
+                              if (isNaN(total) || total <= 0) { alert("Invalid payout amount."); return; }
+                              if (!activeShip) { alert("No active ship selected to pull funds from. Select an active vessel first."); return; }
+                              
+                              const totalShares = (companyData?.crewRoster || []).reduce((acc, c) => acc + (c.payrollShare || 0), 0);
+                              if (totalShares <= 0) { alert("No valid shares assigned to crew roster."); return; }
+                              
+                              const payoutPerShare = total / totalShares;
+                              let deductedAmount = 0;
+                              
+                              const updatedRoster = (companyData?.crewRoster || []).map(c => {
+                                 if ((c.payrollShare || 0) > 0) {
+                                   const payout = Math.floor(c.payrollShare * payoutPerShare);
+                                   deductedAmount += payout;
+                                   if (c.type === 'Player') {
+                                     const existingData = c.characterData || {
+                                        title: '', age: '', species: '', homeworld: '', traits: '',
+                                        str: 7, dex: 7, end: 7, int: 7, edu: 7, soc: 7,
+                                        skills: [],
+                                        equipment: '', weapons: '', armor: '', augments: '', 
+                                        trainingSkill: '', trainingWeeks: '', trainingPeriods: '',
+                                        wounds: '', careers: '', history: '', allies: '', contacts: '', rivals: '', enemies: '', personalCredits: 0
+                                     };
+                                     return {
+                                       ...c,
+                                       characterData: {
+                                         ...existingData,
+                                         personalCredits: (existingData.personalCredits || 0) + payout
+                                       }
+                                     };
+                                   }
+                                 }
+                                 return c;
+                              });
+
+                              const newLedger = { id: Math.random().toString(), timestamp: new Date().toISOString(), type: 'Expense' as const, amount: -deductedAmount, description: `Crew Share Distribution (Total Pool: ${total})` };
+                              
+                              const updatedShips = (companyData?.ships || []).map(s => {
+                                 if (s.id === activeShip.id) {
+                                   return { ...s, credits: s.credits - deductedAmount, ledgers: [...(s.ledgers || []), newLedger] };
+                                 }
+                                 return s;
+                              });
+
+                              updateCompanyData({ crewRoster: updatedRoster, ships: updatedShips });
+                           }
+                         });
+                      }}>[ DISTRIBUTE SHARES ]</button>
+                    </div>
                   </div>
                 </>
               )}
@@ -550,41 +695,77 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             </div>
           )}
 
+          {activeTab === 'characters' && (
+             <>
+               <div className="panel" data-title="[ COMPANY PERSONNEL: PLAYER DATA ASSETS ]" style={{ marginBottom: '20px' }}>
+                 {(companyData?.crewRoster || []).filter(c => c.type === 'Player').length === 0 ? (
+                    <p style={{ color: 'var(--color-phosphor-dim)' }}>No Player characters found in company roster. Use System Manager to initialize personnel records.</p>
+                 ) : (
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <label style={{ color: 'var(--color-phosphor-dim)' }}>Select Active Data File:</label>
+                      <select 
+                        value={activeCharacterId} 
+                        onChange={e => setActiveCharacterId(e.target.value)}
+                        style={{ padding: '5px', background: 'var(--color-bg)', color: 'var(--color-phosphor)', borderColor: 'var(--color-phosphor)' }}
+                      >
+                        <option value="">-- Select Character --</option>
+                        {(companyData?.crewRoster || []).filter(c => c.type === 'Player').map(c => (
+                           <option key={c.id} value={c.id}>{c.name} {c.roles ? `(${c.roles})` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                 )}
+               </div>
+
+               {activeCharacterId && (companyData?.crewRoster || []).find(c => c.id === activeCharacterId) && (
+                 <CharacterSheet 
+                   crew={(companyData?.crewRoster || []).find(c => c.id === activeCharacterId)!}
+                   updateCrew={(updates) => {
+                      const updatedRoster = (companyData?.crewRoster || []).map(crew => 
+                         crew.id === activeCharacterId ? { ...crew, ...updates } : crew
+                      );
+                      updateCompanyData({ crewRoster: updatedRoster });
+                   }}
+                 />
+               )}
+             </>
+          )}
+
           {activeTab === 'dashboard' && activeShip && (
             <>
               <div className="panel" data-title="[ SYSTEM DIAGNOSTICS ]">
                 <p>Company Systems Online. Terminal bridged to: {activeShip.shipName}</p>
                 <p>Select a module from the SYS.NAV menu to begin calculating commerce.</p>
               </div>
-              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} allShips={companyData?.ships} onTransfer={handleTransferItem} companyRoster={companyData?.crewRoster} />
             </>
           )}
 
           {activeTab === 'passengers' && activeShip && (
             <>
               <PassengerBroker shipData={activeShip} updateShipData={updateActiveShip} />
-              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} allShips={companyData?.ships} onTransfer={handleTransferItem} companyRoster={companyData?.crewRoster} />
             </>
           )}
 
           {activeTab === 'freight' && activeShip && (
             <>
               <FreightBroker shipData={activeShip} updateShipData={updateActiveShip} />
-              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} allShips={companyData?.ships} onTransfer={handleTransferItem} companyRoster={companyData?.crewRoster} />
             </>
           )}
 
           {activeTab === 'speculative' && activeShip && (
             <>
               <SpeculativeTrade shipData={activeShip} updateShipData={updateActiveShip} />
-              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} allShips={companyData?.ships} onTransfer={handleTransferItem} companyRoster={companyData?.crewRoster} />
             </>
           )}
 
           {activeTab === 'inventory' && activeShip && (
             <>
               <InventoryManager shipData={activeShip} updateShipData={updateActiveShip} />
-              <ShipStatus data={activeShip} updateData={updateActiveShip} />
+              <ShipStatus data={activeShip} updateData={updateActiveShip} allShips={companyData?.ships} onTransfer={handleTransferItem} companyRoster={companyData?.crewRoster} />
             </>
           )}
 

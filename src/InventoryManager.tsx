@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShipData, LedgerEntry, FreightLot, TradeGoodItem, Passenger, MiscCargoItem } from './ShipStatus';
+import type { ShipData, LedgerEntry, FreightLot, TradeGoodItem, Passenger, MiscCargoItem } from './ShipStatus';
 import { audioService } from './audioService';
 import { TRADE_GOODS } from './tradeGoodsData';
 
