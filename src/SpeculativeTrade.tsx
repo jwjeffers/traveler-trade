@@ -61,6 +61,7 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
 
   const [selectedGood, setSelectedGood] = useState<TradeGood | null>(null);
   const [transactionTons, setTransactionTons] = useState<number>(1);
+  const [availableTons, setAvailableTons] = useState<number>(0);
   
   // Purchase State
   const [purchaseRoll, setPurchaseRoll] = useState<number>(0);
@@ -84,6 +85,24 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
     const codes = parseTradeCodes(val);
     setDestCodes(codes);
     audioService.playKeystroke();
+  };
+
+  const parseTonsFormula = (formula: string): number => {
+    let dice = 1;
+    let multiplier = 1;
+    const parts = formula.toLowerCase().split('x');
+    if (parts.length > 0) {
+      const diceMatch = parts[0].trim().match(/(\d+)d/);
+      if (diceMatch) dice = parseInt(diceMatch[1], 10);
+    }
+    if (parts.length > 1) {
+      multiplier = parseInt(parts[1].trim(), 10) || 1;
+    }
+    
+    let roll = 0;
+    for(let i = 0; i < dice; i++) roll += Math.floor(Math.random() * 6) + 1;
+    
+    return roll * multiplier;
   };
 
   const toggleSourceCode = (code: TradeCode) => {
@@ -241,11 +260,12 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                 <input 
                   type="number" 
                   min="1"
+                  max={availableTons > 0 ? availableTons : undefined}
                   value={transactionTons} 
-                  onChange={e => setTransactionTons(Math.max(1, Number(e.target.value)))}
+                  onChange={e => setTransactionTons(Math.max(1, Math.min(availableTons || 99999, Number(e.target.value))))}
                   style={{ width: '80px', color: 'var(--color-phosphor)', borderColor: 'var(--color-phosphor-dim)' }}
                 /> 
-                <span style={{ fontSize: '0.8rem' }}> Tons (Roll: {selectedGood.tons})</span>
+                <span style={{ fontSize: '0.8rem' }}> / {availableTons} Tons Available (Formula: {selectedGood.tons})</span>
              </div>
            </div>
           
@@ -414,6 +434,9 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                       <button 
                         onClick={() => { 
                           setSelectedGood(g); 
+                          const rolledTons = parseTonsFormula(g.tons);
+                          setAvailableTons(rolledTons);
+                          setTransactionTons(rolledTons);
                           setPurchaseRoll(0); 
                           setSaleRoll(0); 
                           audioService.playKeystroke(); 
