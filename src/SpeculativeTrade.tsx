@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { TRADE_GOODS, MODIFIED_PRICE_TABLE, type TradeCode, type TradeGood } from './tradeGoodsData';
 import { audioService } from './audioService';
-import type { ShipData, LedgerEntry } from './ShipStatus';
+import type { ShipData, LedgerEntry, TradeGoodItem } from './ShipStatus';
+import { useEffect } from 'react';
 
 const ALL_CODES: TradeCode[] = ['Ag', 'As', 'Ba', 'De', 'Fl', 'Ga', 'Hi', 'Ht', 'Ic', 'In', 'Lo', 'Lt', 'Na', 'Ni', 'Po', 'Ri', 'Wa', 'Va', 'Amber', 'Red'];
 
@@ -98,12 +99,20 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
     if (parts.length > 1) {
       multiplier = parseInt(parts[1].trim(), 10) || 1;
     }
-    
     let roll = 0;
     for(let i = 0; i < dice; i++) roll += Math.floor(Math.random() * 6) + 1;
-    
     return roll * multiplier;
   };
+
+  const [marketTonnages, setMarketTonnages] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    const newTons: Record<number, number> = {};
+    TRADE_GOODS.forEach(g => {
+      newTons[g.d66] = parseTonsFormula(g.tons);
+    });
+    setMarketTonnages(newTons);
+  }, [sourceCodes, destCodes, brokerSkill, supplierBroker, buyerBroker]);
 
   const toggleSourceCode = (code: TradeCode) => {
     setSourceCodes(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
@@ -302,10 +311,18 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                       return;
                     }
                     const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Expense', amount: totalCost, description: `Purchased ${transactionTons}t of ${selectedGood.type}` };
+                    const newGood: TradeGoodItem = {
+                      id: 'tg-' + Date.now(),
+                      d66: selectedGood.d66,
+                      type: selectedGood.type,
+                      tons: transactionTons,
+                      purchasePrice: pricePerTon,
+                    };
                     updateShipData({
                       credits: shipData.credits - totalCost,
                       availableCargoTons: shipData.availableCargoTons - transactionTons,
-                      ledgers: [...(shipData.ledgers || []), newLedger]
+                      ledgers: [...(shipData.ledgers || []), newLedger],
+                      tradeGoods: [...(shipData.tradeGoods || []), newGood]
                     });
                     audioService.playClick();
                   }} style={{ marginTop: '10px', width: '100%', borderColor: '#00ff00', color: '#00ff00', fontSize: '0.9rem' }}>
@@ -338,10 +355,27 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                     const pricePerTon = Math.round(selectedGood.basePrice * getPriceMultiplier(saleRoll).sale);
                     const totalSale = pricePerTon * transactionTons;
                     const newLedger: LedgerEntry = { id: 'sp-' + Date.now(), timestamp: new Date().toISOString(), type: 'Income', amount: totalSale, description: `Sold ${transactionTons}t of ${selectedGood.type}` };
+                    
+                    const updatedTradeGoods = [...(shipData.tradeGoods || [])];
+                    let remainingToSell = transactionTons;
+                    for (let i = 0; i < updatedTradeGoods.length; i++) {
+                      if (updatedTradeGoods[i].d66 === selectedGood.d66 && remainingToSell > 0) {
+                         if (updatedTradeGoods[i].tons <= remainingToSell) {
+                            remainingToSell -= updatedTradeGoods[i].tons;
+                            updatedTradeGoods[i].tons = 0;
+                         } else {
+                            updatedTradeGoods[i].tons -= remainingToSell;
+                            remainingToSell = 0;
+                         }
+                      }
+                    }
+                    const finalTradeGoods = updatedTradeGoods.filter(t => t.tons > 0);
+
                     updateShipData({
                       credits: shipData.credits + totalSale,
                       availableCargoTons: Math.min(shipData.maxCargoTons, shipData.availableCargoTons + transactionTons),
-                      ledgers: [...(shipData.ledgers || []), newLedger]
+                      ledgers: [...(shipData.ledgers || []), newLedger],
+                      tradeGoods: finalTradeGoods
                     });
                     audioService.playClick();
                   }} style={{ marginTop: '10px', width: '100%', borderColor: '#dca3ff', color: '#dca3ff', fontSize: '0.9rem' }}>
@@ -425,7 +459,10 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                     {g.isIllegal && <span style={{ color: '#ff5555', marginLeft: '5px' }}>[ILGL]</span>}
                     {isSourceAvail ? <span style={{ color: '#00ff00', marginLeft: '5px', fontSize:'0.7rem' }}>[LOCAL]</span> : null}
                   </td>
-                  <td style={{ padding: '8px' }}>{g.tons}</td>
+                  <td style={{ padding: '8px' }}>
+                    {marketTonnages[g.d66] || 0} 
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-phosphor-dim)', marginLeft: '5px' }}>({g.tons})</span>
+                  </td>
                   <td style={{ padding: '8px' }}>{g.basePrice.toLocaleString()}</td>
                   <td style={{ padding: '8px', color: srcDm > 0 ? '#00ff00' : 'var(--color-phosphor)' }}>{srcDm > 0 ? `+${srcDm}` : srcDm}</td>
                   <td style={{ padding: '8px', color: destDm > 0 ? '#dca3ff' : 'var(--color-phosphor)' }}>{destDm > 0 ? `+${destDm}` : destDm}</td>
@@ -434,7 +471,7 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
                       <button 
                         onClick={() => { 
                           setSelectedGood(g); 
-                          const rolledTons = parseTonsFormula(g.tons);
+                          const rolledTons = marketTonnages[g.d66] || parseTonsFormula(g.tons);
                           setAvailableTons(rolledTons);
                           setTransactionTons(rolledTons);
                           setPurchaseRoll(0); 

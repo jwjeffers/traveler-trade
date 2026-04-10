@@ -42,6 +42,14 @@ export interface MailContract {
   revenue: number;
 }
 
+export interface TradeGoodItem {
+  id: string;
+  d66: number;
+  type: string;
+  tons: number;
+  purchasePrice: number;
+}
+
 export interface CrewMember {
   id: string;
   name: string;
@@ -114,6 +122,7 @@ export interface ShipData {
   passengers: Passenger[];
   freightLots: FreightLot[];
   mailContracts: MailContract[];
+  tradeGoods?: TradeGoodItem[];
   ledgers?: LedgerEntry[];
 }
 
@@ -532,6 +541,43 @@ export function ShipStatus({ data, updateData }: { data: ShipData, updateData: (
                                 Refund
                               </button>
                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h3 style={{marginTop: '30px', color: '#00ff00'}}>Current Trade Items</h3>
+              {(!data.tradeGoods || data.tradeGoods.length === 0) ? (
+                <p style={{ color: 'var(--color-phosphor-dim)' }}>No speculative cargo currently loaded.</p>
+              ) : (
+                <div style={{overflowY: 'auto', maxHeight: '300px'}}>
+                  <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #00ff00' }}>
+                        <th>Goods</th><th>Tons</th><th>Base Cost</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.tradeGoods.map(tg => (
+                        <tr key={tg.id}>
+                          <td>[{tg.d66}] {tg.type}</td>
+                          <td>{tg.tons}T</td>
+                          <td>Cr {tg.purchasePrice.toLocaleString()}</td>
+                          <td>
+                            <button 
+                              onClick={() => {
+                                const remaining = data.tradeGoods!.filter(t => t.id !== tg.id);
+                                updateData({ 
+                                  tradeGoods: remaining,
+                                  availableCargoTons: data.availableCargoTons + tg.tons
+                                });
+                              }}
+                              style={{ padding: '2px 5px', fontSize: '0.8rem', borderColor: '#ff6666', color: '#ff6666' }}>
+                              Dump Cargo
+                            </button>
                           </td>
                         </tr>
                       ))}
