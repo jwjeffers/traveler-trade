@@ -51,7 +51,7 @@ class AudioService {
     this.playTone(155, 'sawtooth', 0.4, vol);
   }
 
-  playBoot(vol = 0.2) {
+  playBoot(vol = 0.05) {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
