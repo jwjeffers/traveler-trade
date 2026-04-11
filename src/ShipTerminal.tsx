@@ -7,11 +7,13 @@ import { FreightBroker } from './FreightBroker';
 import { SpeculativeTrade } from './SpeculativeTrade';
 import { InventoryManager } from './InventoryManager';
 import { CharacterSheet } from './CharacterSheet';
+import { CharacterGenerator } from './CharacterGenerator';
 import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
   const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman'>('dashboard');
+  const [showCharGen, setShowCharGen] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState<string>('');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
   const [modalConfig, setModalConfig] = useState<{ title: string, message: string, type: 'alert' | 'confirm' | 'prompt' | 'ledger-edit' | 'media', onConfirm?: () => void, promptDefault?: string, onPromptSubmit?: (val: string) => void, onLedgerEditSubmit?: (desc: string, amt: number) => void, iframeUrl?: string } | null>(null);
@@ -433,12 +435,15 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                         ))}
                       </tbody>
                     </table>
-                    <div style={{ display: 'flex', gap: '15px' }}>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                       <button style={{ marginTop: '15px', flex: 1, padding: '10px' }} onClick={() => {
                          updateCompanyData({ 
                            crewRoster: [...(companyData?.crewRoster || []), { id: Math.random().toString(), name: 'New Crew', roles: 'Crew', type: 'NPC', salary: 0, payrollShare: 1 }] 
                          });
                       }}>+ ADD CREW ENTITY</button>
+                      <button style={{ marginTop: '15px', flex: 1, padding: '10px', borderColor: '#dca3ff', color: '#dca3ff' }} onClick={() => setShowCharGen(true)}>
+                         + GENERATE LIFEPATH CHARACTER
+                      </button>
                       <button style={{ marginTop: '15px', flex: 1, padding: '10px', borderColor: '#00ff00', color: '#00ff00' }} onClick={() => {
                          setModalConfig({
                            title: 'PAYOUT CREW SHARES',
@@ -790,6 +795,15 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           </div>
         </div>
       </div>
+      {showCharGen && (
+        <CharacterGenerator 
+          onComplete={(newCrew) => {
+            updateCompanyData({ crewRoster: [...(companyData?.crewRoster || []), newCrew] });
+            setShowCharGen(false);
+          }}
+          onCancel={() => setShowCharGen(false)}
+        />
+      )}
     </div>
   );
 }

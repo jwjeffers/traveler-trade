@@ -6,36 +6,46 @@ const formatDM = (dm: number) => dm >= 0 ? `+${dm}` : `${dm}`;
 
 export function CharacterSheet({ crew, updateCrew }: { crew: CrewMember, updateCrew: (updates: Partial<CrewMember>) => void }) {
   
-  const DEFAULT_SKILLS = [
+  const DEFAULT_SKILL_NAMES = [
     'Admin', 'Advocate', 'Animals', 'Art', 'Astrogation', 'Athletics', 'Broker', 
     'Carouse', 'Deception', 'Diplomat', 'Drive', 'Electronics', 'Flyer', 'Gambler', 
     'Gun Combat', 'Gunner', 'Heavy Weapons', 'Investigate', 'Jack-of-All-Trades', 
     'Language', 'Leadership', 'Mechanic', 'Melee', 'Medic', 'Navigation', 
     'Persuade', 'Pilot', 'Profession', 'Recon', 'Science', 'Seafarer', 'Stealth', 
     'Steward', 'Streetwise', 'Survival', 'Tactics', 'Vacc Suit'
-  ].map((name, i) => ({ id: name + i, name, level: 0 }));
+  ];
 
   // Ensure the character has standard baseline character data before rendering.
   const data: CharacterData = crew.characterData || {
     title: '', age: '', species: '', homeworld: '', traits: '',
     str: 7, dex: 7, end: 7, int: 7, edu: 7, soc: 7,
-    skills: DEFAULT_SKILLS,
+    skills: [],
     equipment: '', weapons: '', armor: '', augments: '', 
     trainingSkill: '', trainingWeeks: '', trainingPeriods: '',
     wounds: '', careers: '', history: '', allies: '', contacts: '', rivals: '', enemies: '',
     personalCredits: 0
   };
 
-  if (data.skills.length === 0) {
-    data.skills = DEFAULT_SKILLS;
-  }
+  const hydratedSkills = DEFAULT_SKILL_NAMES.map((name, i) => {
+    const existing = (data.skills || []).find(s => s.name === name);
+    return existing || { id: name + '-' + i, name, level: 0 };
+  });
+
+  (data.skills || []).forEach(s => {
+    if (!DEFAULT_SKILL_NAMES.includes(s.name)) {
+      hydratedSkills.push(s);
+    }
+  });
+
+  // Sort them alphabetically for a cleaner look
+  hydratedSkills.sort((a, b) => a.name.localeCompare(b.name));
 
   const updateChar = (updates: Partial<CharacterData>) => {
     updateCrew({ characterData: { ...data, ...updates } });
   };
 
   const updateSkill = (id: string, field: 'level', val: any) => {
-    updateChar({ skills: data.skills.map(s => s.id === id ? { ...s, [field]: val } : s) });
+    updateChar({ skills: hydratedSkills.map(s => s.id === id ? { ...s, [field]: val } : s) });
   };
 
   return (
@@ -77,7 +87,7 @@ export function CharacterSheet({ crew, updateCrew }: { crew: CrewMember, updateC
             <h3 style={{ margin: 0, color: 'var(--color-phosphor)' }}>TRAINING: SKILLS</h3>
           </div>
           <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
-            {data.skills.map(s => (
+            {hydratedSkills.map(s => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>{s.name}</span>
                 <input type="number" value={s.level} onChange={e => updateSkill(s.id, 'level', parseInt(e.target.value) || 0)} style={{ width: '40px', textAlign: 'center', border: '1px solid var(--color-phosphor-dim)' }} />
