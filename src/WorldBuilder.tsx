@@ -8,13 +8,13 @@ export interface SavedMap {
   id: string;
   name: string;
   timestamp: number;
-  type: 'subsector' | 'single';
+  type: 'subsector' | 'single' | 'sector';
   worlds: WorldData[];
   hexGrid?: (WorldData | null)[];
 }
 
 export const WorldBuilder: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'generator' | 'library'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'library' | 'combiner'>('generator');
   const [worlds, setWorlds] = useState<WorldData[]>([]);
   const [hexGrid, setHexGrid] = useState<(WorldData | null)[]>(new Array(80).fill(null));
   const [savedLibrary, setSavedLibrary] = useState<SavedMap[]>(() => {
@@ -35,11 +35,16 @@ export const WorldBuilder: React.FC = () => {
   const [hoveredHex, setHoveredHex] = useState<{ sys: WorldData; x: number; y: number } | null>(null);
   const [editSys, setEditSys] = useState<WorldData | null>(null);
   const [searchHex, setSearchHex] = useState('');
-  const [exportBW, setExportBW] = useState(false);
+  const [exportBW, setExportBW] = useState(true);
   const [density, setDensity] = useState(0.5);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const [jumpLines, setJumpLines] = useState<{id: string, x1: number, y1: number, x2: number, y2: number}[]>([]);
+  
+  const [combinerSlots, setCombinerSlots] = useState<(SavedMap | null)[]>([null, null, null, null]);
+  const [combineName, setCombineName] = useState("");
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  
   const handleExportPDFBW = () => {
     if (!mapContainerRef.current) return;
     setExportBW(true);
@@ -59,11 +64,9 @@ export const WorldBuilder: React.FC = () => {
                 });
                 pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
                 pdf.save(`Traveler_Sector_BW_${Date.now()}.pdf`);
-                setExportBW(false);
             };
         } catch (err) {
             console.error("PDF B&W generation failed", err);
-            setExportBW(false);
         }
     }, 100);
   };
@@ -74,6 +77,9 @@ export const WorldBuilder: React.FC = () => {
         if (!mapContainerRef.current) return;
         const containerRect = mapContainerRef.current.getBoundingClientRect();
         
+        const isSector = hexGrid.length > 80;
+        const gridCols = isSector ? 16 : 8;
+
         // Helper to get hex offset to axial
         const offsetToAxial = (cIdx: number, rIdx: number) => {
              const q = cIdx;
@@ -90,8 +96,8 @@ export const WorldBuilder: React.FC = () => {
             // Imperial routes primarily spider out from A and B class starports
             if (sysA.starport !== 'A' && sysA.starport !== 'B') continue;
 
-            const cA = i % 8;
-            const rA = Math.floor(i / 8);
+            const cA = i % gridCols;
+            const rA = Math.floor(i / gridCols);
             const axA = offsetToAxial(cA, rA);
 
             for (let j = i + 1; j < hexGrid.length; j++) {
@@ -100,8 +106,8 @@ export const WorldBuilder: React.FC = () => {
                 // Only connect to A, B, or C class
                 if (!['A', 'B', 'C'].includes(sysB.starport)) continue;
 
-                const cB = j % 8;
-                const rB = Math.floor(j / 8);
+                const cB = j % gridCols;
+                const rB = Math.floor(j / gridCols);
                 const axB = offsetToAxial(cB, rB);
 
                 if (hexDist(axA, axB) === 1) {
@@ -133,6 +139,53 @@ export const WorldBuilder: React.FC = () => {
         window.removeEventListener('resize', calcLines);
     };
   }, [hexGrid]);
+
+  const handleCombineSector = () => {
+      // Must have all 4 slots
+      if (combinerSlots.some(slot => slot === null)) return;
+      if (!combineName.trim()) return;
+
+      const newSectorGrid = new Array(320).fill(null);
+      const newSectorWorlds: WorldData[] = [];
+
+      combinerSlots.forEach((slotMap, slotIndex) => {
+          if (!slotMap || !slotMap.hexGrid || slotMap.type !== 'subsector') return;
+          
+          const colOffset = (slotIndex % 2 === 1) ? 8 : 0;
+          const rowOffset = (slotIndex >= 2) ? 10 : 0;
+          
+          slotMap.hexGrid.forEach((sys, i) => {
+              if (sys) {
+                  const origCol = (i % 8) + 1; 
+                  const origRow = Math.floor(i / 8) + 1; 
+                  
+                  const newCol = origCol + colOffset;
+                  const newRow = origRow + rowOffset;
+                  
+                  const newHexStr = `${newCol.toString().padStart(2, '0')}${newRow.toString().padStart(2, '0')}`;
+                  const updatedSys = { ...sys, hex: newHexStr };
+                  
+                  const newIndex = (newRow - 1) * 16 + (newCol - 1);
+                  newSectorGrid[newIndex] = updatedSys;
+                  newSectorWorlds.push(updatedSys);
+              }
+          });
+      });
+
+      const newSave: SavedMap = {
+          id: Date.now().toString(),
+          name: combineName,
+          timestamp: Date.now(),
+          type: 'sector',
+          worlds: newSectorWorlds,
+          hexGrid: newSectorGrid
+      };
+
+      setSavedLibrary(prev => [newSave, ...prev]);
+      setActiveTab('library');
+      setCombinerSlots([null, null, null, null]);
+      setCombineName("");
+  };
 
   const confirmSaveMap = () => {
     if (worlds.length === 0 || !savingName) return;
@@ -217,17 +270,41 @@ export const WorldBuilder: React.FC = () => {
     setWorlds(generatedWorlds);
   };
 
+  const handleGenerateSector = () => {
+    const newGrid: (WorldData | null)[] = new Array(320).fill(null);
+    const generatedWorlds: WorldData[] = [];
+    
+    for (let c = 1; c <= 16; c++) {
+      for (let r = 1; r <= 20; r++) {
+        if (Math.random() < density) {
+          const colStr = c.toString().padStart(2, '0');
+          const rowStr = r.toString().padStart(2, '0');
+          const hex = `${colStr}${rowStr}`;
+          
+          const world = generateWorld(generateRandomName(), hex);
+          const index = (r - 1) * 16 + (c - 1);
+          newGrid[index] = world;
+          generatedWorlds.push(world);
+        }
+      }
+    }
+    
+    setHexGrid(newGrid);
+    setWorlds(generatedWorlds);
+  };
+
   return (
     <div style={{ padding: '20px' }}>
-      <h2 style={{ borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+      <h2 style={{ borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <span>REFEREE: WORLD BUILDER</span>
-            <button onClick={() => setActiveTab('generator')} style={{ background: 'none', border: 'none', color: activeTab === 'generator' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', cursor: 'pointer', textDecoration: activeTab === 'generator' ? 'underline' : 'none', fontSize: '1rem' }}>MAP GENERATOR</button>
-            <button onClick={() => setActiveTab('library')} style={{ background: 'none', border: 'none', color: activeTab === 'library' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', cursor: 'pointer', textDecoration: activeTab === 'library' ? 'underline' : 'none', fontSize: '1rem' }}>SAVED LIBRARY ({savedLibrary.length})</button>
+            <button onClick={() => setActiveTab('generator')} className="toolbar-btn" style={{ background: 'none', border: '1px solid', borderColor: activeTab === 'generator' ? 'var(--color-phosphor)' : 'transparent', color: activeTab === 'generator' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', cursor: 'pointer' }}>MAP<br/>GENERATOR</button>
+            <button onClick={() => setActiveTab('library')} className="toolbar-btn" style={{ background: 'none', border: '1px solid', borderColor: activeTab === 'library' ? 'var(--color-phosphor)' : 'transparent', color: activeTab === 'library' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', cursor: 'pointer' }}>SAVED<br/>LIBRARY ({savedLibrary.length})</button>
+            <button onClick={() => setActiveTab('combiner')} className="toolbar-btn" style={{ background: 'none', border: '1px solid', borderColor: activeTab === 'combiner' ? 'var(--color-phosphor)' : 'transparent', color: activeTab === 'combiner' ? 'var(--color-phosphor)' : 'var(--color-phosphor-dim)', cursor: 'pointer' }}>SECTOR<br/>COMBINER</button>
         </div>
         
         {activeTab === 'generator' && (
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 {savingName !== null ? (
                     <div style={{ display: 'flex', gap: '5px' }}>
                         <input 
@@ -236,28 +313,30 @@ export const WorldBuilder: React.FC = () => {
                             onChange={(e) => setSavingName(e.target.value)} 
                             placeholder="Map Name..."
                             autoFocus
-                            style={{ background: '#000', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', padding: '5px 10px', outline: 'none' }}
+                            className="toolbar-select"
+                            style={{ background: '#000', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', outline: 'none' }}
                         />
-                        <button onClick={confirmSaveMap} style={{ padding: '5px 15px', background: '#00aaff', border: '1px solid #00aaff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
+                        <button onClick={confirmSaveMap} className="toolbar-btn" style={{ background: '#00aaff', border: '1px solid #00aaff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
                         CONFIRM
                         </button>
-                        <button onClick={() => setSavingName(null)} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)', cursor: 'pointer' }}>
+                        <button onClick={() => setSavingName(null)} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)', cursor: 'pointer' }}>
                         CANCEL
                         </button>
                     </div>
                 ) : (
-                    <button onClick={() => setSavingName("New Subsector")} disabled={worlds.length === 0} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #00aaff', color: '#00aaff', cursor: 'pointer', opacity: worlds.length === 0 ? 0.3 : 1 }}>
+                    <button onClick={() => setSavingName(hexGrid.length > 80 ? "New Sector" : "New Subsector")} disabled={worlds.length === 0} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid #00aaff', color: '#00aaff', cursor: 'pointer', opacity: worlds.length === 0 ? 0.3 : 1 }}>
                     SAVE SEC
                     </button>
                 )}
-                <button onClick={handleGenerateSingle} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', cursor: 'pointer' }}>
-                GENERATE SINGLE WORLD
+                <button onClick={handleGenerateSingle} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', cursor: 'pointer' }}>
+                GENERATE SINGLE<br/>WORLD
                 </button>
-                <div style={{ display: 'flex' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
                     <select 
                        value={density} 
                        onChange={(e) => setDensity(Number(e.target.value))}
-                       style={{ padding: '4px 10px', background: '#050000', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', borderRight: 'none', fontSize: '0.9rem', cursor: 'pointer', outline: 'none' }}
+                       className="toolbar-select"
+                       style={{ background: '#050000', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', borderRight: 'none', cursor: 'pointer', outline: 'none' }}
                     >
                        <option value={0.16}>Rift (16%)</option>
                        <option value={0.33}>Sparse (33%)</option>
@@ -266,16 +345,19 @@ export const WorldBuilder: React.FC = () => {
                        <option value={0.83}>Cluster (83%)</option>
                        <option value={1.00}>Core (100%)</option>
                     </select>
-                    <button onClick={handleGenerateSubsector} style={{ padding: '5px 15px', background: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', color: '#000', cursor: 'pointer' }}>
-                    GENERATE SUBSECTOR
+                    <button onClick={handleGenerateSubsector} className="toolbar-btn" style={{ background: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', color: '#000', cursor: 'pointer' }}>
+                    GENERATE<br/>SUBSECTOR
+                    </button>
+                    <button onClick={handleGenerateSector} className="toolbar-btn" style={{ background: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)', borderLeft: '1px solid #000', color: '#000', cursor: 'pointer' }}>
+                    GENERATE<br/>SECTOR
                     </button>
                 </div>
-                <button onClick={() => { setHexGrid(new Array(80).fill(null)); setWorlds([]); }} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #ff5555', color: '#ff5555', cursor: 'pointer' }}>
-                CLEAR MAP
+                <button onClick={() => { setHexGrid(new Array(80).fill(null)); setWorlds([]); }} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid #ff5555', color: '#ff5555', cursor: 'pointer' }}>
+                CLEAR<br/>MAP
                 </button>
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <button onClick={handleExportPDFBW} style={{ padding: '5px 15px', background: '#fff', border: '1px solid #fff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
-                    EXPORT B&W MAP
+                    <button onClick={handleExportPDFBW} className="toolbar-btn" style={{ background: '#fff', border: '1px solid #fff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
+                    EXPORT B&W<br/>MAP
                     </button>
                 </div>
             </div>
@@ -293,7 +375,7 @@ export const WorldBuilder: React.FC = () => {
                        dlAnchorElem.setAttribute("download", "traveler_saved_maps.json");
                        dlAnchorElem.click();
                    }
-                }} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', cursor: 'pointer', fontWeight: 'bold' }}>EXPORT MAPS (.json)</button>
+                }} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', cursor: 'pointer', fontWeight: 'bold' }}>EXPORT MAPS<br/>(.json)</button>
                 
                 <input type="file" id="importFile" style={{ display: 'none' }} accept=".json" onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -315,7 +397,7 @@ export const WorldBuilder: React.FC = () => {
                     };
                     reader.readAsText(file);
                 }} />
-                <button onClick={() => document.getElementById('importFile')?.click()} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)', cursor: 'pointer' }}>IMPORT MAPS</button>
+                <button onClick={() => document.getElementById('importFile')?.click()} className="toolbar-btn" style={{ background: 'transparent', border: '1px solid var(--color-phosphor-dim)', color: 'var(--color-phosphor-dim)', cursor: 'pointer' }}>IMPORT<br/>MAPS</button>
                 <a id="downloadAnchorElem" style={{display: 'none'}}></a>
             </div>
 
@@ -333,6 +415,8 @@ export const WorldBuilder: React.FC = () => {
                                 <button onClick={() => {
                                     setWorlds(save.worlds);
                                     if (save.type === 'subsector' && save.hexGrid) {
+                                        setHexGrid(save.hexGrid);
+                                    } else if (save.type === 'sector' && save.hexGrid) {
                                         setHexGrid(save.hexGrid);
                                     } else {
                                         setHexGrid(new Array(80).fill(null));
@@ -355,13 +439,106 @@ export const WorldBuilder: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'combiner' && (
+        <div style={{ marginTop: '20px', display: 'flex', gap: '30px' }}>
+            <div style={{ flex: '1', minWidth: '300px', borderRight: '1px dashed var(--color-phosphor)', paddingRight: '20px' }}>
+                <h3 style={{ borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>Subsector Maps</h3>
+                <p style={{ color: 'var(--color-phosphor-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>Drag a subsector map below into the sector slots, or click to select and then click a slot.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                    {savedLibrary.filter(s => s.type === 'subsector').map(save => (
+                        <div 
+                            key={save.id}
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('mapId', save.id);
+                                setSelectedMapId(save.id);
+                            }}
+                            onClick={() => setSelectedMapId(save.id)}
+                            style={{ 
+                                padding: '10px', 
+                                border: `1px solid ${selectedMapId === save.id ? '#00ffaa' : 'var(--color-phosphor)'}`, 
+                                background: selectedMapId === save.id ? 'rgba(0, 255, 170, 0.2)' : 'rgba(0, 255, 0, 0.05)', 
+                                cursor: 'pointer' 
+                            }}
+                        >
+                            <strong style={{ color: selectedMapId === save.id ? '#00ffaa' : 'inherit' }}>{save.name}</strong> <span style={{fontSize: '0.8rem', color: 'var(--color-phosphor-dim)'}}>({save.worlds.length} worlds)</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div style={{ flex: '2' }}>
+                <h3 style={{ borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>Sector Assembly Matrix</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '200px 200px', gap: '15px', marginTop: '20px' }}>
+                    {['Alpha (Top-Left)', 'Beta (Top-Right)', 'Gamma (Bottom-Left)', 'Delta (Bottom-Right)'].map((label, idx) => (
+                        <div 
+                            key={idx}
+                            onDragOver={(e) => e.preventDefault()}
+                            onClick={() => {
+                                if (selectedMapId) {
+                                    const mapData = savedLibrary.find(s => s.id === selectedMapId);
+                                    if (mapData) {
+                                        setCombinerSlots(prev => {
+                                            const next = [...prev];
+                                            next[idx] = mapData;
+                                            return next;
+                                        });
+                                        setSelectedMapId(null);
+                                    }
+                                }
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                const mapId = e.dataTransfer.getData('mapId');
+                                const mapData = savedLibrary.find(s => s.id === mapId);
+                                if (mapData) {
+                                    setCombinerSlots(prev => {
+                                        const next = [...prev];
+                                        next[idx] = mapData;
+                                        return next;
+                                    });
+                                }
+                            }}
+                            style={{ border: '2px dashed ' + (combinerSlots[idx] ? '#00ffaa' : 'var(--color-phosphor-dim)'), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: combinerSlots[idx] ? 'rgba(0, 255, 170, 0.1)' : 'transparent' }}
+                        >
+                            <span style={{ color: 'var(--color-phosphor-dim)', marginBottom: '10px' }}>{label}</span>
+                            {combinerSlots[idx] ? (
+                                <strong style={{ fontSize: '1.5rem', color: '#00ffaa' }}>{combinerSlots[idx]!.name}</strong>
+                            ) : (
+                                <span style={{ color: 'var(--color-phosphor-dim)' }}>Empty Slot</span>
+                            )}
+                            {combinerSlots[idx] && (
+                                <button onClick={() => setCombinerSlots(prev => { const n=[...prev]; n[idx]=null; return n;})} style={{ marginTop: '10px', background: 'transparent', border: 'none', color: '#ff5555', cursor: 'pointer', textDecoration: 'underline' }}>Remove</button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <div style={{ marginTop: '30px', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <input 
+                        type="text" 
+                        placeholder="New Sector Name..." 
+                        value={combineName}
+                        onChange={(e) => setCombineName(e.target.value)}
+                        style={{ padding: '8px 15px', background: '#000', border: '1px solid var(--color-phosphor)', color: 'var(--color-phosphor)', width: '300px', fontSize: '1.2rem', outline: 'none' }}
+                    />
+                    <button 
+                        onClick={handleCombineSector}
+                        disabled={combinerSlots.some(s => s === null) || !combineName.trim()}
+                        style={{ padding: '8px 25px', fontSize: '1.2rem', fontWeight: 'bold', background: (combinerSlots.some(s => s === null) || !combineName.trim()) ? 'var(--color-phosphor-dim)' : 'var(--color-phosphor)', color: '#000', border: 'none', cursor: (combinerSlots.some(s => s === null) || !combineName.trim()) ? 'not-allowed' : 'pointer' }}
+                    >
+                        COMBINE AND SAVE
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       {activeTab === 'generator' && (
         <div ref={printRef} style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
         
         
         {/* Left Col: Hex Grid Visualization */}
-        <div style={{ flex: '1', minWidth: '400px' }}>
-            <h3 style={{ borderBottom: '1px dashed var(--color-phosphor)', marginBottom: '20px' }}>Subsector Map</h3>
+        <div style={{ flex: hexGrid.length > 80 ? '2' : '1', minWidth: hexGrid.length > 80 ? '700px' : '400px' }}>
+            <h3 style={{ borderBottom: '1px dashed var(--color-phosphor)', marginBottom: '20px' }}>{hexGrid.length > 80 ? 'Sector Map' : 'Subsector Map'}</h3>
             <div ref={mapContainerRef} style={{ display: 'flex', width: '100%', paddingBottom: '10%', position: 'relative' }}>
               
               {/* SVG LAYER FOR TRADE ROUTES */}
@@ -377,26 +554,36 @@ export const WorldBuilder: React.FC = () => {
                   ))}
               </svg>
 
-              {[...Array(8)].map((_, cIdx) => {
-                 const colNum = cIdx + 1;
-                 const isEvenCol = colNum % 2 === 0;
-                 return (
-                   <div key={`col-${cIdx}`} style={{ 
-                     display: 'flex', flexDirection: 'column', width: '16%', 
-                     marginLeft: cIdx === 0 ? '0' : '-4%', 
-                     marginTop: isEvenCol ? '6.928%' : '0' 
-                   }}>
-                      {[...Array(10)].map((_, rIdx) => {
-                       const rowNum = rIdx + 1;
-                       const sysIdx = (rowNum - 1) * 8 + cIdx;
-                       const sys = hexGrid[sysIdx];
-                       const hexFormat = `${colNum.toString().padStart(2, '0')}${rowNum.toString().padStart(2, '0')}`;
-                       let hexBg = exportBW ? '#ffffff' : '#050000';
-                       if (sys && !exportBW) {
+              {(() => {
+                 const isSector = hexGrid.length > 80;
+                 const gridCols = isSector ? 16 : 8;
+                 const gridRows = isSector ? 20 : 10;
+                 
+                 const colW = 100 / (gridCols * 0.75 + 0.25);
+                 const colWidthStr = `${colW}%`;
+                 const marginLeftStr = `${-(colW / 4)}%`;
+                 const marginTopStr = `${colW * 0.433}%`;
+
+                 return [...Array(gridCols)].map((_, cIdx) => {
+                     const colNum = cIdx + 1;
+                     const isEvenCol = colNum % 2 === 0;
+                     return (
+                       <div key={`col-${cIdx}`} style={{ 
+                         display: 'flex', flexDirection: 'column', width: colWidthStr, 
+                         marginLeft: cIdx === 0 ? '0' : marginLeftStr, 
+                         marginTop: isEvenCol ? marginTopStr : '0' 
+                       }}>
+                          {[...Array(gridRows)].map((_, rIdx) => {
+                           const rowNum = rIdx + 1;
+                           const sysIdx = (rowNum - 1) * gridCols + cIdx;
+                           const sys = hexGrid[sysIdx];
+                           const hexFormat = sys ? sys.hex : `${colNum.toString().padStart(2, '0')}${rowNum.toString().padStart(2, '0')}`;
+                           let hexBg = exportBW ? '#ffffff' : '#050000';
+                       if (sys) {
                            if (sys.starport === 'X' || sys.lawLevel >= 13) {
-                               hexBg = 'rgba(120, 0, 0, 0.6)'; // Red Zone
+                               hexBg = exportBW ? '#ffcccc' : 'rgba(120, 0, 0, 0.6)'; // Red Zone
                            } else if (sys.lawLevel >= 9 || sys.atmosphere >= 10) {
-                               hexBg = 'rgba(120, 120, 0, 0.5)'; // Amber Zone
+                               hexBg = exportBW ? '#ffffcc' : 'rgba(120, 120, 0, 0.5)'; // Amber Zone
                            }
                        }
                        
@@ -423,13 +610,13 @@ export const WorldBuilder: React.FC = () => {
                                {hexFormat}
                              </span>
                              {sys?.hasGasGiant && (
-                                <span style={{ position: 'absolute', top: '12%', right: '18%', fontSize: '1.2rem', color: exportBW ? '#000' : 'var(--color-phosphor)', textShadow: exportBW ? 'none' : '0 0 5px var(--color-phosphor)' }}>●</span>
+                                <span style={{ position: 'absolute', top: '12%', right: '18%', fontSize: '1.2rem', color: exportBW ? '#008800' : 'var(--color-phosphor)', textShadow: exportBW ? 'none' : '0 0 5px var(--color-phosphor)' }}>●</span>
                              )}
                              {sys?.bases?.includes('Naval') && (
-                                <span style={{ position: 'absolute', top: '35%', right: '10%', fontSize: '1.2rem', color: exportBW ? '#000' : '#ffd700' }}>★</span>
+                                <span style={{ position: 'absolute', top: '35%', right: '10%', fontSize: '1.2rem', color: exportBW ? '#cc0000' : '#ffd700' }}>★</span>
                              )}
                              {sys?.bases?.includes('Scout') && (
-                                <span style={{ position: 'absolute', top: '35%', left: '10%', fontSize: '1rem', color: exportBW ? '#000' : '#ffd700' }}>▲</span>
+                                <span style={{ position: 'absolute', top: '35%', left: '10%', fontSize: '1rem', color: exportBW ? '#0000cc' : '#ffd700' }}>▲</span>
                              )}
                              {sys && (
                                <>
@@ -441,10 +628,10 @@ export const WorldBuilder: React.FC = () => {
                            </div>
                          </div>
                        );
-                     })}
+                      })}
                    </div>
                  );
-              })}
+               })})()}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
                 <p style={{ fontSize: '1rem', color: 'var(--color-phosphor-dim)', margin: 0 }}>Map generated at {Math.round(density * 100)}% Sector Density.</p>
@@ -456,7 +643,7 @@ export const WorldBuilder: React.FC = () => {
          </div>
 
         {/* Right Col: World List */}
-        <div style={{ flex: '2', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: '10px' }}>
+        <div style={{ flex: hexGrid.length > 80 ? '1' : '2', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: '10px' }}>
             <h3 style={{ borderBottom: '1px dashed var(--color-phosphor)', display: 'flex', justifyContent: 'space-between', paddingBottom: '10px' }}>
                 <span>Generated Systems Data ({worlds.length})</span>
                 <input 
@@ -618,6 +805,11 @@ export const WorldBuilder: React.FC = () => {
              Trade: <b style={{ color: '#00ff00' }}>{hoveredHex.sys.tradeCodes.length > 0 ? hoveredHex.sys.tradeCodes.join(' ') : 'None'}</b><br/>
              Bases: <b style={{ color: '#ffd700' }}>{hoveredHex.sys.bases && hoveredHex.sys.bases.length > 0 ? hoveredHex.sys.bases.join(', ') : 'None'}</b><br/>
              Gas Giant: <b style={{ color: 'var(--color-phosphor)' }}>{hoveredHex.sys.hasGasGiant ? 'Present' : 'None'}</b>
+             {hoveredHex.sys.lore && (
+                 <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#aaaaaa', fontStyle: 'italic', lineHeight: '1.2', borderTop: '1px dashed var(--color-phosphor-dim)', paddingTop: '10px', whiteSpace: 'pre-wrap' }}>
+                     {hoveredHex.sys.lore}
+                 </div>
+             )}
           </div>
         </div>
       )}
@@ -671,6 +863,15 @@ export const WorldBuilder: React.FC = () => {
                         }} />
                         Scout Base
                     </label>
+               </div>
+
+               <div style={{ marginTop: '15px' }}>
+                   <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>System Lore</label>
+                   <textarea 
+                      value={editSys.lore || ''} 
+                      onChange={(e) => handleStatChange('lore', e.target.value)}
+                      style={{ width: '100%', height: '200px', background: '#000', color: 'var(--color-phosphor-dim)', border: '1px solid var(--color-phosphor)', padding: '5px', fontStyle: 'italic', fontFamily: 'inherit', resize: 'vertical' }}
+                   />
                </div>
 
                <div style={{ marginTop: '20px', background: '#333', padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

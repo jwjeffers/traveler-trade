@@ -43,8 +43,8 @@ body {
 }
 
 @keyframes flicker {
-  0% { opacity: 0.95; }
-  50% { opacity: 0.9; }
+  0% { opacity: 0.99; }
+  50% { opacity: 0.97; }
   100% { opacity: 1; }
 }
 
@@ -304,4 +304,28 @@ option {
 
 .crit-box.filled {
   background-color: var(--color-phosphor);
+}
+
+.toolbar-btn {
+  height: 55px;
+  width: 150px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+  white-space: normal;
+  line-height: 1.1;
+  font-size: 1rem;
+  margin: 0;
+}
+.toolbar-select {
+  height: 55px;
+  width: 150px;
+  padding: 5px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  margin: 0;
+  text-align: center;
 }

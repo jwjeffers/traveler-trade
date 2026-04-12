@@ -1,3 +1,9 @@
+export interface Faction {
+  name: string;
+  power: string;
+  type: string;
+}
+
 export interface WorldData {
   id: string;
   name: string;
@@ -6,22 +12,26 @@ export interface WorldData {
   size: number;
   atmosphere: number;
   temperature: number;
+  temperatureClass?: string;
   hydrographics: number;
   population: number;
   government: number;
+  governmentType?: string;
   lawLevel: number;
   starport: string;
+  starportDetails?: string;
   techLevel: number;
   tradeCodes: string[];
   hasGasGiant?: boolean;
   bases?: string[];
+  lore?: string;
+  factions?: Faction[];
+  culture?: string;
 }
 
 export const roll = (dice: number, sides: number = 6): number => {
   let total = 0;
-  for (let i = 0; i < dice; i++) {
-    total += Math.floor(Math.random() * sides) + 1;
-  }
+  for (let i = 0; i < dice; i++) total += Math.floor(Math.random() * sides) + 1;
   return total;
 };
 
@@ -35,10 +45,9 @@ export const generateRandomName = (): string => {
    return s1 + s2 + suffix;
 };
 
-// Converts numbers to pseudo-hex (0-9, A-F, G, H...)
 export const toPseudoHex = (val: number): string => {
   if (val < 0) return '0';
-  if (val > 33) return 'Z'; // fallback
+  if (val > 33) return 'Z';
   return "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"[val] || '0';
 };
 
@@ -62,12 +71,144 @@ export const calculateTradeCodes = (w: Partial<WorldData>): string[] => {
   if ([6, 8].includes(atmosphere) && population >= 6 && population <= 8 && government >= 4 && government <= 9) codes.push("Ri");
   if (atmosphere === 0) codes.push("Va");
   if (hydrographics >= 10) codes.push("Wa");
-
   return codes;
 };
 
 export const generateUWPString = (w: Partial<WorldData>): string => {
   return `${w.starport || 'X'}${toPseudoHex(w.size || 0)}${toPseudoHex(w.atmosphere || 0)}${toPseudoHex(w.hydrographics || 0)}${toPseudoHex(w.population || 0)}${toPseudoHex(w.government || 0)}${toPseudoHex(w.lawLevel || 0)}-${toPseudoHex(w.techLevel || 0)}`;
+};
+
+export const GOV_TYPES = [
+    "No Government Structure", "Company/Corporation", "Participating Democracy", "Self-Perpetuating Oligarchy",
+    "Representative Democracy", "Feudal Technocracy", "Captive Government", "Balkanisation",
+    "Civil Service Bureaucracy", "Impersonal Bureaucracy", "Charismatic Dictator", "Non-Charismatic Leader",
+    "Charismatic Oligarchy", "Religious Dictatorship", "Religious Autocracy", "Totalitarian Oligarchy"
+];
+
+const STARPORT_DETAILS: Record<string, string> = {
+    'A': "Excellent quality facility handling major traffic. Features unrefined and refined fuel, a shipyard capable of both starship and small craft construction, and annual maintenance overhaul bays.",
+    'B': "Good quality facility. Features unrefined and refined fuel, a shipyard capable of small craft construction, and full annual maintenance capabilities.",
+    'C': "Routine quality facility. Only unrefined fuel is available. Shipyard capable of reasonable repairs, though not construction.",
+    'D': "Poor quality facility. Features unrefined fuel but lacks dedicated repair or maintenance shipyard capabilities.",
+    'E': "Frontier Installation. A bare patch of bedrock cleared for landing. No fuel, facilities, or bases.",
+    'X': "No Starport. Absolutely no landing provisions are made."
+};
+
+const CULTURE_TABLE = [
+    "Sexist", "Religious", "Artistic", "Ritualised", "Conservative", "Xenophobic",
+    "Taboo", "Deceptive", "Liberal", "Honourable", "Influenced", "Fusion",
+    "Synergistic", "Peaceful", "Obsessed", "Fashion", "Atavistic", "Progressive",
+    "Recovering", "Nexus", "Tourist Attraction", "Violent", "Caste System", "Ritual Combat",
+    "Elitist", "Egalitarian", "Entertaining", "Telepathy Focus", "Exclusive", "Secretive",
+    "Militant", "Tolerant", "Transient", "Apathetic", "Traditional", "Free-spirited"
+];
+
+const FACTION_POWER = [
+    "Obscure group", "Obscure group", "Marginal group", "Marginal group", "Significant group", 
+    "Significant group", "Significant group", "Notable group", "Notable group", "Overwhelming power", "Overwhelming power"
+];
+
+export const generateLore = (w: Partial<WorldData>): string => {
+   const sentences: string[] = [];
+   
+   const rand = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+   
+   // Population & Govt
+   if (w.population === 0) {
+      sentences.push(rand([
+          `${w.name || 'This world'} is an uninhabited barren rock drifting in the void.`,
+          `Devoid of life, ${w.name} is entirely uninhabited by sentient species.`,
+          `No permanent population exists on ${w.name}.`
+      ]));
+   } else if (w.population! < 4) {
+      sentences.push(rand([
+          `${w.name} is a remote frontier outpost maintained by a sparse population.`,
+          `A minuscule, isolated population clings to survival on ${w.name}.`,
+          `Only a handful of rugged pioneers call ${w.name} home.`
+      ]));
+   } else if (w.population! > 8) {
+      sentences.push(rand([
+          `${w.name} is a densely populated core world teeming with billions.`,
+          `Massive hive cities and urban sprawl pack billions of souls onto ${w.name}.`,
+          `Overpopulation defines ${w.name}, an incredibly dense world.`
+      ]));
+   } else {
+      sentences.push(rand([
+          `${w.name} is an established colony world.`,
+          `A stable population thrives across the surface of ${w.name}.`,
+          `Millions reside harmoniously across the settlements of ${w.name}.`
+      ]));
+   }
+
+   // Law level & Gov
+   if (w.population! > 0) {
+       sentences.push(rand([
+           `The ruling body is classified as a ${w.governmentType}.`,
+           `Global civilization is organized under a ${w.governmentType}.`
+       ]));
+       
+       if (w.lawLevel! >= 13) {
+           sentences.push(rand([
+               `Life here revolves around strict obedience, with extreme law level enforcement.`,
+               `Totalitarian mandates dictate everyday life, enforced by heavy, omnipresent policing.`
+           ]));
+       } else if (w.lawLevel! <= 2) {
+           sentences.push(rand([
+               `The local society is highly decentralized with virtually no restricting laws.`,
+               `Anarchy freely reigns in a society absent of meaningful armament restrictions.`
+           ]));
+       }
+   }
+
+   // Physical properties
+   if (w.temperatureClass === 'Frozen' || w.temperatureClass === 'Cold') {
+       sentences.push(rand([
+           `The surface is an unforgiving ${w.temperatureClass.toLowerCase()} wasteland.`,
+           `Temperatures rarely break freezing on this completely ${w.temperatureClass.toLowerCase()} world.`
+       ]));
+   } else if (w.temperatureClass === 'Roasting' || w.temperatureClass === 'Hot') {
+       sentences.push(rand([
+           `Intense heat scours the ${w.temperatureClass.toLowerCase()} surface incessantly.`,
+           `Survival requires thermal shielding from the blistering, ${w.temperatureClass.toLowerCase()} environment.`
+       ]));
+   } else {
+       sentences.push(rand([
+           `The climate remains widely temperate and hospitable.`,
+           `Average temperatures fall within moderate, life-sustaining norms.`
+       ]));
+   }
+
+   if (w.atmosphere === 0 || w.atmosphere === 1) {
+       sentences.push(`Surface structures are entirely enclosed or subterranean due to the lack of a breathable atmosphere.`);
+   } else if (w.atmosphere! >= 10) {
+       sentences.push(`Toxic or insidious corrosive storms regularly ravage the hostile exterior environment.`);
+   } 
+   
+   if (w.hydrographics! >= 9) {
+       sentences.push(`Massive planet-wide oceans dominate the pristine surface.`);
+   } else if (w.hydrographics! <= 1 && w.population! > 0) {
+       sentences.push(`Water is fiercely rationed across its expansive, desolate deserts.`);
+   }
+   
+   // Trade/Bases features
+   if (w.bases?.includes('Naval') && w.bases?.includes('Scout')) {
+       sentences.push(`A massive joint Naval and Scout military presence secures the sector architecture from this strategic stronghold.`);
+   } else if (w.bases?.includes('Naval')) {
+       sentences.push(`A sprawling Naval base orbits the mainworld, projecting significant fleet power into neighboring subsectors.`);
+   } else if (w.bases?.includes('Scout')) {
+       sentences.push(`The local Scout waystation provides vital navigation data and refueling for deep space survey operations.`);
+   }
+
+   // Append Factions & Details as Bullet Points
+   if (w.population! > 0) {
+       sentences.push(`\n\n• Starport: ${w.starportDetails}`);
+       if (w.culture) sentences.push(`\n• Cultural Differences: ${w.culture}`);
+       if (w.factions && w.factions.length > 0) {
+           sentences.push(`\n• Factions:\n` + w.factions.map(f => `  - ${f.name} [${f.type}] : ${f.power}`).join('\n'));
+       }
+   }
+
+   return sentences.join(" ");
 };
 
 export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): WorldData => {
@@ -87,13 +228,19 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
   else if (atmosphere === 10 || atmosphere === 13 || atmosphere === 15) tempRoll += 2;
   else if (atmosphere === 11 || atmosphere === 12) tempRoll += 6;
   
-  let temperature = tempRoll; // just keeping raw value for references
+  let temperature = tempRoll; 
+  let temperatureClass = "Temperate";
+  if (tempRoll <= 2) temperatureClass = "Frozen";
+  else if (tempRoll >= 3 && tempRoll <= 4) temperatureClass = "Cold";
+  else if (tempRoll >= 5 && tempRoll <= 9) temperatureClass = "Temperate";
+  else if (tempRoll >= 10 && tempRoll <= 11) temperatureClass = "Hot";
+  else if (tempRoll >= 12) temperatureClass = "Roasting";
   
   let hydrographics = roll(2) - 7 + atmosphere;
   if (size <= 1) hydrographics = 0;
-  if (atmosphere <= 1 || atmosphere >= 10 && atmosphere <= 12) hydrographics -= 4;
-  if (tempRoll >= 10 && tempRoll <= 11) hydrographics -= 2; // Hot
-  else if (tempRoll >= 12) hydrographics -= 6; // Boiling
+  if (atmosphere <= 1 || (atmosphere >= 10 && atmosphere <= 12)) hydrographics -= 4;
+  if (tempRoll >= 10 && tempRoll <= 11) hydrographics -= 2; 
+  else if (tempRoll >= 12) hydrographics -= 6;
   
   if (hydrographics < 0) hydrographics = 0;
   if (hydrographics > 10) hydrographics = 10;
@@ -105,6 +252,8 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
   let government = roll(2) - 7 + population;
   if (population === 0) government = 0;
   if (government < 0) government = 0;
+  let govIdx = Math.min(government, 15);
+  let governmentType = GOV_TYPES[govIdx];
 
   let lawLevel = roll(2) - 7 + government;
   if (population === 0) lawLevel = 0;
@@ -125,6 +274,8 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
   else if (spRoll === 7 || spRoll === 8) starport = 'C';
   else if (spRoll === 9 || spRoll === 10) starport = 'B';
   else if (spRoll >= 11) starport = 'A';
+  
+  let starportDetails = STARPORT_DETAILS[starport];
 
   // Tech Level
   let tlRoll = roll(1);
@@ -150,14 +301,11 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
 
   let techLevel = tlRoll;
   if (techLevel < 0) techLevel = 0;
-  if (population === 0) techLevel = 0; // null TL for empty worlds usually
+  if (population === 0) techLevel = 0;
 
-  // Generate UWP string
   const uwp = generateUWPString({ starport, size, atmosphere, hydrographics, population, government, lawLevel, techLevel });
-
   const tradeCodes = calculateTradeCodes({ size, atmosphere, hydrographics, population, government, lawLevel });
 
-  // Gas Giant and Bases Logic
   const hasGasGiant = roll(2) <= 10;
   const bases: string[] = [];
   
@@ -173,7 +321,31 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
     if (roll(2) >= 7) bases.push('Scout');
   }
 
-  return {
+  // Factions & Culture (MGT2 additions)
+  let culture = undefined;
+  const factions: Faction[] = [];
+  
+  if (population > 0) {
+      culture = CULTURE_TABLE[Math.floor(Math.random() * CULTURE_TABLE.length)];
+      
+      const numFactions = roll(1, 3); // 1d3 Factions
+      for (let i=0; i<numFactions; i++) {
+          let fGov = roll(2) - 7 + government;
+          if (fGov < 0) fGov = 0;
+          let fGovType = GOV_TYPES[Math.min(fGov, 15)];
+          
+          let fPow = roll(2);
+          let powerDesc = FACTION_POWER[Math.min(Math.max(fPow - 2, 0), 10)];
+          
+          factions.push({
+              name: generateRandomName(),
+              power: powerDesc,
+              type: fGovType
+          });
+      }
+  }
+
+  const worldBasis: WorldData = {
     id: Math.random().toString(36).substr(2, 9),
     name,
     hex,
@@ -181,14 +353,24 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
     size,
     atmosphere,
     temperature,
+    temperatureClass,
     hydrographics,
     population,
     government,
+    governmentType,
     lawLevel,
     starport,
+    starportDetails,
     techLevel,
     tradeCodes,
     hasGasGiant,
-    bases
+    bases,
+    culture,
+    factions
+  };
+  
+  return {
+    ...worldBasis,
+    lore: generateLore(worldBasis)
   };
 };
