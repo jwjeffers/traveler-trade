@@ -10,9 +10,10 @@ import { CharacterSheet } from './CharacterSheet';
 import { CharacterGenerator } from './CharacterGenerator';
 import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
+import { WorldBuilder } from './WorldBuilder';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
-  const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman' | 'settings' | 'worldbuilder'>('dashboard');
   const [showCharGen, setShowCharGen] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState<string>('');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
@@ -25,6 +26,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   const activeShip = companyData?.ships?.find(s => s.id === activeSubShipId) || companyData?.ships?.[0];
 
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
+  const [refereeView, setRefereeView] = useState(() => localStorage.getItem('refereeView') === 'true');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
 
   const [ledgerShipId, setLedgerShipId] = useState<string>('');
@@ -120,6 +122,10 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   }, [theme]);
 
   useEffect(() => {
+    localStorage.setItem('refereeView', refereeView.toString());
+  }, [refereeView]);
+
+  useEffect(() => {
     try {
       // @ts-ignore
       const { ipcRenderer } = window.require('electron');
@@ -181,6 +187,11 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
             </div>
           )}
 
+          <div style={{ marginBottom: '15px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>{activeShip ? activeShip.shipName.toUpperCase() : 'UNKNOWN'} BALANCE</p>
+            <p style={{ margin: 0, fontSize: '1.2rem' }}>Cr {activeShip ? activeShip.credits.toLocaleString() : 0}</p>
+          </div>
+
           <button onClick={() => { setActiveTab('characters'); audioService.playClick(); }}>
             {activeTab === 'characters' ? '> Character Sheets' : 'Character Sheets'}
           </button>
@@ -205,24 +216,15 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           <button onClick={() => { setActiveTab('sysman'); audioService.playClick(); }}>
             {activeTab === 'sysman' ? '> System Manager' : 'System Manager'}
           </button>
-
-          <div style={{ marginTop: '20px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>{activeShip ? activeShip.shipName.toUpperCase() : 'UNKNOWN'} BALANCE</p>
-            <p style={{ margin: 0, fontSize: '1.2rem' }}>Cr {activeShip ? activeShip.credits.toLocaleString() : 0}</p>
-          </div>
-
-          <div style={{ marginTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', color: 'var(--color-phosphor-dim)' }}>TERMINAL THEME</label>
-            <select value={theme} onChange={e => setTheme(e.target.value)} style={{ width: '100%', cursor: 'pointer' }}>
-              <option value="default">Default (Green)</option>
-              <option value="yellow">Neon Yellow</option>
-              <option value="magenta">Magenta</option>
-              <option value="cyan">Cyan</option>
-              <option value="red">Red</option>
-              <option value="blue">Blue</option>
-              <option value="rainbow">Rainbow</option>
-            </select>
-          </div>
+          <button onClick={() => { setActiveTab('settings'); audioService.playClick(); }}>
+            {activeTab === 'settings' ? '> Settings' : 'Settings'}
+          </button>
+          
+          {refereeView && (
+            <button onClick={() => { setActiveTab('worldbuilder'); audioService.playClick(); }} style={{ color: '#ffaaaa', borderColor: '#ffaaaa' }}>
+              {activeTab === 'worldbuilder' ? '> [ Ref ] World Builder' : '[ Ref ] World Builder'}
+            </button>
+          )}
 
 
           
@@ -599,10 +601,10 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                   </div>
 
                   <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--color-phosphor-dim)', padding: '5px' }}>
-                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '1.2rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--color-phosphor)' }}>
-                          <th>Date / Time</th><th>Type</th><th>Description</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
+                          <th style={{ padding: '10px 0' }}>Date / Time</th><th style={{ padding: '10px 0' }}>Type</th><th style={{ padding: '10px 0' }}>Description</th><th style={{ textAlign: 'right', padding: '10px 0' }}>Amount</th><th></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -613,15 +615,15 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                             const date = new Date(l.timestamp);
                             return (
                               <tr key={l.id} style={{ borderBottom: '1px dashed var(--color-phosphor-dim)' }}>
-                                <td style={{ padding: '8px 0', color: 'var(--color-phosphor-dim)', fontSize: '0.8rem' }}>
+                                <td style={{ padding: '12px 0', color: 'var(--color-phosphor-dim)', fontSize: '1rem' }}>
                                   {date.toLocaleDateString()} {date.toLocaleTimeString()}
                                 </td>
-                                <td>{l.type}</td>
-                                <td>{l.description}</td>
-                                <td style={{ textAlign: 'right', color: l.type === 'Income' || l.amount > 0 ? '#00ff00' : '#ff5555' }}>
+                                <td style={{ padding: '12px 0' }}>{l.type}</td>
+                                <td style={{ padding: '12px 0' }}>{l.description}</td>
+                                <td style={{ textAlign: 'right', padding: '12px 0', color: l.type === 'Income' || l.amount > 0 ? '#00ff00' : '#ff5555' }}>
                                   {l.amount > 0 ? '+' : ''}{l.amount.toLocaleString()} Cr
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td style={{ textAlign: 'right', padding: '12px 0' }}>
                                   <button onClick={() => {
                                      setPromptValue(l.description);
                                      setPromptAmount(l.amount.toString());
@@ -642,7 +644,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                                           updateCompanyData({ ships: updatedShips });
                                        }
                                      })
-                                  }} style={{ padding: '2px 5px', fontSize: '0.7rem', marginRight: '5px' }}>EDIT</button>
+                                  }} style={{ padding: '4px 10px', fontSize: '0.9rem', marginRight: '5px' }}>EDIT</button>
                                   <button onClick={() => {
                                      setModalConfig({
                                        title: 'DELETE TRANSACTION',
@@ -658,7 +660,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                                           updateCompanyData({ ships: updatedShips });
                                        }
                                      })
-                                  }} style={{ padding: '2px 5px', fontSize: '0.7rem', borderColor: '#ff5555', color: '#ff5555' }}>DEL</button>
+                                  }} style={{ padding: '4px 10px', fontSize: '0.9rem', borderColor: '#ff5555', color: '#ff5555' }}>DEL</button>
                                 </td>
                               </tr>
                             );
@@ -707,6 +709,35 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="panel" data-title="[ TERMINAL SETTINGS ]">
+              <div style={{ maxWidth: '400px' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', color: 'var(--color-phosphor-dim)' }}>TERMINAL THEME</label>
+                <select value={theme} onChange={e => setTheme(e.target.value)} style={{ width: '100%', cursor: 'pointer', padding: '10px', background: 'var(--color-bg)', color: 'var(--color-phosphor)', border: '1px solid var(--color-phosphor)' }}>
+                  <option value="default">Default (Green)</option>
+                  <option value="yellow">Neon Yellow</option>
+                  <option value="magenta">Magenta</option>
+                  <option value="cyan">Cyan</option>
+                  <option value="red">Red</option>
+                  <option value="blue">Blue</option>
+                  <option value="rainbow">Rainbow</option>
+                </select>
+
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', marginTop: '20px', color: 'var(--color-phosphor-dim)' }}>REFEREE OPTIONS</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="referee-toggle"
+                    checked={refereeView} 
+                    onChange={e => setRefereeView(e.target.checked)} 
+                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--color-phosphor)' }}
+                  />
+                  <label htmlFor="referee-toggle" style={{ cursor: 'pointer', color: 'var(--color-phosphor)' }}>Enable Referee View</label>
+                </div>
+              </div>
             </div>
           )}
 
@@ -793,6 +824,11 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
               />
             </div>
           </div>
+          
+          {activeTab === 'worldbuilder' && (
+            <WorldBuilder />
+          )}
+
         </div>
       </div>
       {showCharGen && (

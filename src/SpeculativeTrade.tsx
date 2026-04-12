@@ -504,14 +504,18 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
       {/* LEGEND MODAL */}
       {showLegend && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="panel" style={{ maxWidth: '700px', maxHeight: '85vh', overflowY: 'auto', border: '1px solid var(--color-phosphor)', background: '#050000', padding: '25px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px' }}>
-              <h2 style={{ margin: 0, color: 'var(--color-phosphor)' }}>TRADE CODE GLOSSARY</h2>
-              <button onClick={() => { setShowLegend(false); audioService.playClick(); }} style={{ padding: '5px 15px', borderColor: 'var(--color-phosphor)' }}>CLOSE</button>
+          <div className="panel" style={{ maxWidth: '900px', maxHeight: '85vh', overflowY: 'auto', border: '1px solid var(--color-phosphor)', background: '#050000', padding: '35px', boxShadow: '0 0 20px rgba(0,255,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '15px' }}>
+              <h2 style={{ margin: 0, color: 'var(--color-phosphor)', fontSize: '2.2rem', letterSpacing: '2px' }}>TRADE CODE GLOSSARY</h2>
+              <button 
+                onClick={() => { setShowLegend(false); audioService.playClick(); }} 
+                style={{ padding: '8px 20px', borderColor: 'var(--color-phosphor)', background: 'transparent', color: 'var(--color-phosphor)', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                CLOSE
+              </button>
             </div>
             
-            <div style={{ fontSize: '0.9rem', color: 'var(--color-phosphor-dim)', lineHeight: '1.4' }}>
-              <h3 style={{ color: '#00ff00', marginTop: '15px', marginBottom: '5px' }}>Planetary Economies</h3>
+            <div style={{ fontSize: '1.4rem', color: 'var(--color-phosphor-dim)', lineHeight: '1.8' }}>
+              <h3 style={{ color: '#00ff00', marginTop: '15px', marginBottom: '12px', fontSize: '1.6rem', letterSpacing: '1px' }}>Planetary Economies</h3>
               <p><b>Ag (Agricultural):</b> Bountiful environments. Specialize in farming and mass food production.</p>
               <p><b>In (Industrial):</b> Densely populated worlds focused on heavy manufacturing and machinery.</p>
               <p><b>Na (Non-Agricultural):</b> Worlds where farming on a large scale is impossible; must import food.</p>
@@ -519,14 +523,14 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
               <p><b>Ri (Rich):</b> Prosperous worlds with high living standards. Great for luxury goods.</p>
               <p><b>Po (Poor):</b> Disadvantaged worlds struggling to survive; only afford cheap essentials.</p>
 
-              <h3 style={{ color: '#00ff00', marginTop: '20px', marginBottom: '5px' }}>Demographics & Technology</h3>
+              <h3 style={{ color: '#00ff00', marginTop: '35px', marginBottom: '12px', fontSize: '1.6rem', letterSpacing: '1px' }}>Demographics & Technology</h3>
               <p><b>Hi (High Population):</b> Billions of residents. Huge consumers of raw materials.</p>
               <p><b>Lo (Low Population):</b> Outposts or colonies with less than ten thousand inhabitants.</p>
               <p><b>Ht (High Tech):</b> TL 12+. Required for state-of-the-art cybernetics and weaponry.</p>
               <p><b>Lt (Low Tech):</b> TL 5-. Primitive worlds where basic modern tech is incredibly valuable.</p>
               <p><b>Ba (Barren):</b> Dead worlds with zero population, government, and law.</p>
 
-              <h3 style={{ color: '#00ff00', marginTop: '20px', marginBottom: '5px' }}>Biospheres & Geography</h3>
+              <h3 style={{ color: '#00ff00', marginTop: '35px', marginBottom: '12px', fontSize: '1.6rem', letterSpacing: '1px' }}>Biospheres & Geography</h3>
               <p><b>As (Asteroid):</b> Zero-G mining belts. Excellent for ore/gem extraction, require survival imports.</p>
               <p><b>De (Desert):</b> Worlds completely lacking surface water. Water and wood command massive premiums.</p>
               <p><b>Fl (Fluid Oceans):</b> Worlds with exotic, non-water oceans (e.g., methane). Good for petrochemicals.</p>
@@ -535,7 +539,7 @@ export function SpeculativeTrade({ shipData, updateShipData }: { shipData?: Ship
               <p><b>Wa (Water World):</b> Planets composed almost entirely of deep oceans with no landmasses.</p>
               <p><b>Va (Vacuum):</b> Worlds completely devoid of any atmosphere. Requires domes/bunkers.</p>
 
-              <h3 style={{ color: '#ff5555', marginTop: '20px', marginBottom: '5px' }}>Travel Advisories (TAS Zones)</h3>
+              <h3 style={{ color: '#ff5555', marginTop: '35px', marginBottom: '12px', fontSize: '1.6rem', letterSpacing: '1px' }}>Travel Advisories (TAS Zones)</h3>
               <p><b>Amber (Amber Zone):</b> Dangerous worlds (weather, war, or laws). Trade is risky but lucrative.</p>
               <p><b>Red (Red Zone):</b> Interdicted worlds. Travel is illegal; trade here is high-risk smuggling.</p>
             </div>
