@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { generateWorld, toPseudoHex, generateRandomName, generateUWPString, calculateTradeCodes } from './data/worldData';
 import type { WorldData } from './data/worldData';
@@ -40,50 +40,31 @@ export const WorldBuilder: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const [jumpLines, setJumpLines] = useState<{id: string, x1: number, y1: number, x2: number, y2: number}[]>([]);
-
-  const handleExportPDF = async () => {
-    if (!printRef.current) return;
-    try {
-        const canvas = await html2canvas(printRef.current, {
-            backgroundColor: '#050000',
-            windowWidth: printRef.current.scrollWidth,
-            windowHeight: printRef.current.scrollHeight
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height]
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`Traveler_Sector_${Date.now()}.pdf`);
-    } catch (err) {
-        console.error("PDF generation failed", err);
-    }
-  };
-
   const handleExportPDFBW = () => {
     if (!mapContainerRef.current) return;
     setExportBW(true);
     setTimeout(async () => {
         try {
-            const canvas = await html2canvas(mapContainerRef.current!, {
+            const dataUrl = await toPng(mapContainerRef.current!, {
                 backgroundColor: '#ffffff',
-                windowWidth: mapContainerRef.current!.scrollWidth,
-                windowHeight: mapContainerRef.current!.scrollHeight
+                pixelRatio: 2
             });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height]
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`Traveler_Sector_BW_${Date.now()}.pdf`);
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+                const pdf = new jsPDF({
+                    orientation: img.width > img.height ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [img.width, img.height]
+                });
+                pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+                pdf.save(`Traveler_Sector_BW_${Date.now()}.pdf`);
+                setExportBW(false);
+            };
         } catch (err) {
             console.error("PDF B&W generation failed", err);
+            setExportBW(false);
         }
-        setExportBW(false);
     }, 100);
   };
 
@@ -293,9 +274,6 @@ export const WorldBuilder: React.FC = () => {
                 CLEAR MAP
                 </button>
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <button onClick={handleExportPDF} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #00ffaa', color: '#00ffaa', cursor: 'pointer' }}>
-                    EXPORT PDF (FULL)
-                    </button>
                     <button onClick={handleExportPDFBW} style={{ padding: '5px 15px', background: '#fff', border: '1px solid #fff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
                     EXPORT B&W MAP
                     </button>
