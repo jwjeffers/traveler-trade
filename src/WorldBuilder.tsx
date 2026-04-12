@@ -35,6 +35,7 @@ export const WorldBuilder: React.FC = () => {
   const [hoveredHex, setHoveredHex] = useState<{ sys: WorldData; x: number; y: number } | null>(null);
   const [editSys, setEditSys] = useState<WorldData | null>(null);
   const [searchHex, setSearchHex] = useState('');
+  const [exportBW, setExportBW] = useState(false);
   const [density, setDensity] = useState(0.5);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,31 @@ export const WorldBuilder: React.FC = () => {
     } catch (err) {
         console.error("PDF generation failed", err);
     }
+  };
+
+  const handleExportPDFBW = () => {
+    if (!mapContainerRef.current) return;
+    setExportBW(true);
+    setTimeout(async () => {
+        try {
+            const canvas = await html2canvas(mapContainerRef.current!, {
+                backgroundColor: '#ffffff',
+                windowWidth: mapContainerRef.current!.scrollWidth,
+                windowHeight: mapContainerRef.current!.scrollHeight
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`Traveler_Sector_BW_${Date.now()}.pdf`);
+        } catch (err) {
+            console.error("PDF B&W generation failed", err);
+        }
+        setExportBW(false);
+    }, 100);
   };
 
   // Calculate jump routes
@@ -266,9 +292,14 @@ export const WorldBuilder: React.FC = () => {
                 <button onClick={() => { setHexGrid(new Array(80).fill(null)); setWorlds([]); }} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #ff5555', color: '#ff5555', cursor: 'pointer' }}>
                 CLEAR MAP
                 </button>
-                <button onClick={handleExportPDF} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #00ffaa', color: '#00ffaa', cursor: 'pointer' }}>
-                EXPORT AS PDF
-                </button>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    <button onClick={handleExportPDF} style={{ padding: '5px 15px', background: 'transparent', border: '1px solid #00ffaa', color: '#00ffaa', cursor: 'pointer' }}>
+                    EXPORT PDF (FULL)
+                    </button>
+                    <button onClick={handleExportPDFBW} style={{ padding: '5px 15px', background: '#fff', border: '1px solid #fff', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}>
+                    EXPORT B&W MAP
+                    </button>
+                </div>
             </div>
         )}
       </h2>
@@ -361,8 +392,8 @@ export const WorldBuilder: React.FC = () => {
                       <line 
                          key={line.id} 
                          x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} 
-                         stroke="rgba(0, 255, 0, 0.4)" 
-                         strokeWidth="3" 
+                         stroke={exportBW ? "#000000" : "rgba(0, 255, 0, 0.4)"} 
+                         strokeWidth={exportBW ? "2" : "3"} 
                          strokeDasharray="5,5" 
                       />
                   ))}
@@ -377,13 +408,13 @@ export const WorldBuilder: React.FC = () => {
                      marginLeft: cIdx === 0 ? '0' : '-4%', 
                      marginTop: isEvenCol ? '6.928%' : '0' 
                    }}>
-                     {[...Array(10)].map((_, rIdx) => {
+                      {[...Array(10)].map((_, rIdx) => {
                        const rowNum = rIdx + 1;
                        const sysIdx = (rowNum - 1) * 8 + cIdx;
                        const sys = hexGrid[sysIdx];
                        const hexFormat = `${colNum.toString().padStart(2, '0')}${rowNum.toString().padStart(2, '0')}`;
-                       let hexBg = '#050000';
-                       if (sys) {
+                       let hexBg = exportBW ? '#ffffff' : '#050000';
+                       if (sys && !exportBW) {
                            if (sys.starport === 'X' || sys.lawLevel >= 13) {
                                hexBg = 'rgba(120, 0, 0, 0.6)'; // Red Zone
                            } else if (sys.lawLevel >= 9 || sys.atmosphere >= 10) {
@@ -395,7 +426,7 @@ export const WorldBuilder: React.FC = () => {
                          <div key={`hex-${sysIdx}`} id={`hex-dom-${sysIdx}`} style={{
                            width: '100%', aspectRatio: '1.1547',
                            clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-                           background: 'var(--color-phosphor-dim)',
+                           background: exportBW ? '#000000' : 'var(--color-phosphor-dim)',
                            position: 'relative',
                            cursor: sys ? 'pointer' : 'default',
                            marginBottom: '-1px'
@@ -404,29 +435,29 @@ export const WorldBuilder: React.FC = () => {
                          onMouseMove={(e) => { if (sys) setHoveredHex({ sys, x: e.clientX, y: e.clientY }); }}
                          onMouseLeave={() => setHoveredHex(null)}
                          >
-                           <div style={{
+                            <div style={{
                              position: 'absolute', top: '1px', left: '1px', right: '1px', bottom: '1px',
                              clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
                              background: hexBg,
                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                            }}>
-                             <span style={{ fontSize: '1.0rem', position: 'absolute', top: '5%', color: 'var(--color-phosphor)', fontWeight: 'bold' }}>
+                             <span style={{ fontSize: '1.0rem', position: 'absolute', top: '5%', color: exportBW ? '#000' : 'var(--color-phosphor)', fontWeight: 'bold' }}>
                                {hexFormat}
                              </span>
                              {sys?.hasGasGiant && (
-                                <span style={{ position: 'absolute', top: '12%', right: '18%', fontSize: '1.2rem', color: 'var(--color-phosphor)', textShadow: '0 0 5px var(--color-phosphor)' }}>●</span>
+                                <span style={{ position: 'absolute', top: '12%', right: '18%', fontSize: '1.2rem', color: exportBW ? '#000' : 'var(--color-phosphor)', textShadow: exportBW ? 'none' : '0 0 5px var(--color-phosphor)' }}>●</span>
                              )}
                              {sys?.bases?.includes('Naval') && (
-                                <span style={{ position: 'absolute', top: '35%', right: '10%', fontSize: '1.2rem', color: '#ffd700' }}>★</span>
+                                <span style={{ position: 'absolute', top: '35%', right: '10%', fontSize: '1.2rem', color: exportBW ? '#000' : '#ffd700' }}>★</span>
                              )}
                              {sys?.bases?.includes('Scout') && (
-                                <span style={{ position: 'absolute', top: '35%', left: '10%', fontSize: '1rem', color: '#ffd700' }}>▲</span>
+                                <span style={{ position: 'absolute', top: '35%', left: '10%', fontSize: '1rem', color: exportBW ? '#000' : '#ffd700' }}>▲</span>
                              )}
                              {sys && (
                                <>
-                                 <div style={{ width: '10px', height: '10px', background: 'var(--color-phosphor)', borderRadius: '50%', marginTop: '10px' }}></div>
-                                 <span style={{ fontSize: '1.6rem', marginTop: '2px', fontWeight: 'bold' }}>{sys.starport}</span>
-                                 <span style={{ fontSize: '0.95rem', marginTop: '2px', color: 'var(--color-phosphor)', textAlign: 'center', wordBreak: 'break-word', padding: '0 2px', lineHeight: '1.1', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 'bold' }}>{sys.name}</span>
+                                 <div style={{ width: '10px', height: '10px', background: exportBW ? '#000' : 'var(--color-phosphor)', borderRadius: '50%', marginTop: '10px' }}></div>
+                                 <span style={{ fontSize: '1.6rem', color: exportBW ? '#000' : 'var(--color-phosphor)', marginTop: '2px', fontWeight: 'bold' }}>{sys.starport}</span>
+                                 <span style={{ fontSize: '0.95rem', marginTop: '2px', color: exportBW ? '#000' : 'var(--color-phosphor)', textAlign: 'center', wordBreak: 'break-word', padding: '0 2px', lineHeight: '1.1', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 'bold' }}>{sys.name}</span>
                                </>
                              )}
                            </div>
