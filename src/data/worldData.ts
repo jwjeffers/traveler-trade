@@ -27,6 +27,7 @@ export interface WorldData {
   lore?: string;
   factions?: Faction[];
   culture?: string;
+  patrons?: any[];
 }
 
 export const roll = (dice: number, sides: number = 6): number => {
@@ -206,6 +207,9 @@ export const generateLore = (w: Partial<WorldData>): string => {
        if (w.factions && w.factions.length > 0) {
            sentences.push(`\n• Factions:\n` + w.factions.map(f => `  - ${f.name} [${f.type}] : ${f.power}`).join('\n'));
        }
+       if (w.patrons && w.patrons.length > 0) {
+           sentences.push(`\n• Available Patrons & Hooks:\n` + w.patrons.map(p => `  - ${p.patron} offering Cr ${p.rewardBase.toLocaleString()} -> Target: ${p.target}`).join('\n'));
+       }
    }
 
    return sentences.join(" ");
@@ -366,7 +370,8 @@ export const generateWorld = (name: string = "Unnamed", hex: string = "0000"): W
     hasGasGiant,
     bases,
     culture,
-    factions
+    factions,
+    patrons: []
   };
   
   return {

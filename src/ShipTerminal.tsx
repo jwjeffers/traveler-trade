@@ -11,9 +11,10 @@ import { CharacterGenerator } from './CharacterGenerator';
 import { audioService } from './audioService';
 import { supabase } from './supabaseClient';
 import { WorldBuilder } from './WorldBuilder';
+import { PatronGenerator } from './PatronGenerator';
 
 export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () => void }) {
-  const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman' | 'settings' | 'worldbuilder'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'characters' | 'dashboard' | 'passengers' | 'freight' | 'speculative' | 'inventory' | 'starmap' | 'sysman' | 'settings' | 'worldbuilder' | 'patrongen'>('dashboard');
   const [showCharGen, setShowCharGen] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState<string>('');
   const [sysmanView, setSysmanView] = useState<'menu' | 'roster' | 'ship' | 'ledger'>('menu');
@@ -221,9 +222,14 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           </button>
           
           {refereeView && (
-            <button onClick={() => { setActiveTab('worldbuilder'); audioService.playClick(); }} style={{ color: '#ffaaaa', borderColor: '#ffaaaa' }}>
-              {activeTab === 'worldbuilder' ? '> [ Ref ] World Builder' : '[ Ref ] World Builder'}
-            </button>
+            <>
+              <button onClick={() => { setActiveTab('worldbuilder'); audioService.playClick(); }} style={{ color: '#ffaaaa', borderColor: '#ffaaaa', marginBottom: '5px' }}>
+                {activeTab === 'worldbuilder' ? '> [ Ref ] World Builder' : '[ Ref ] World Builder'}
+              </button>
+              <button onClick={() => { setActiveTab('patrongen'); audioService.playClick(); }} style={{ color: '#ffaaaa', borderColor: '#ffaaaa' }}>
+                {activeTab === 'patrongen' ? '> [ Ref ] Patron Gen' : '[ Ref ] Patron Gen'}
+              </button>
+            </>
           )}
 
 
@@ -827,6 +833,10 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           
           {activeTab === 'worldbuilder' && (
             <WorldBuilder />
+          )}
+          
+          {activeTab === 'patrongen' && (
+            <PatronGenerator />
           )}
 
         </div>

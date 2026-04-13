@@ -599,6 +599,23 @@ export const WorldBuilder: React.FC = () => {
                          onClick={() => { if (sys) setEditSys({...sys}); }}
                          onMouseMove={(e) => { if (sys) setHoveredHex({ sys, x: e.clientX, y: e.clientY }); }}
                          onMouseLeave={() => setHoveredHex(null)}
+                         onDragOver={(e) => e.preventDefault()}
+                         onDrop={(e) => {
+                             e.preventDefault();
+                             const wId = e.dataTransfer.getData('worldId');
+                             if (wId) {
+                                 const droppedWorld = worlds.find(dw => dw.id === wId);
+                                 if (droppedWorld) {
+                                     const updatedWorld = { ...droppedWorld, hex: hexFormat };
+                                     setHexGrid(prev => {
+                                         const newGrid = [...prev];
+                                         newGrid[sysIdx] = updatedWorld;
+                                         return newGrid;
+                                     });
+                                     setWorlds(prev => prev.map(dw => dw.id === wId ? updatedWorld : dw));
+                                 }
+                             }
+                         }}
                          >
                             <div style={{
                              position: 'absolute', top: '1px', left: '1px', right: '1px', bottom: '1px',
@@ -659,7 +676,12 @@ export const WorldBuilder: React.FC = () => {
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '15px' }}>
                     {worlds.filter(w => w.hex.includes(searchHex)).map(w => (
-                        <div key={w.id} style={{ border: '1px solid var(--color-phosphor)', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0, 50, 0, 0.1)' }}>
+                        <div 
+                            key={w.id} 
+                            draggable
+                            onDragStart={(e) => { e.dataTransfer.setData('worldId', w.id); }}
+                            style={{ border: '1px solid var(--color-phosphor)', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0, 50, 0, 0.1)', cursor: 'grab' }}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--color-phosphor-dim)', paddingBottom: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <input 
@@ -808,6 +830,16 @@ export const WorldBuilder: React.FC = () => {
              {hoveredHex.sys.lore && (
                  <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#aaaaaa', fontStyle: 'italic', lineHeight: '1.2', borderTop: '1px dashed var(--color-phosphor-dim)', paddingTop: '10px', whiteSpace: 'pre-wrap' }}>
                      {hoveredHex.sys.lore}
+                 </div>
+             )}
+             {hoveredHex.sys.patrons && hoveredHex.sys.patrons.length > 0 && (
+                 <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#00ffaa', borderTop: '1px dashed #00ffaa', paddingTop: '10px' }}>
+                     <strong style={{ display: 'block', marginBottom: '3px' }}>ACTIVE MISSION HOOKS:</strong>
+                     {hoveredHex.sys.patrons.map((p: any, idx: number) => (
+                         <div key={idx} style={{ marginBottom: '3px', marginLeft: '5px' }}>
+                             - {p.patron} : {p.mission} [{p.rewardBase.toLocaleString()} Cr]
+                         </div>
+                     ))}
                  </div>
              )}
           </div>
