@@ -29,12 +29,14 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
     setLoading(true);
     const { data } = await supabase.from('ship_state').select('id, data');
     if (data) {
-      const parsed = data.map(row => {
-        const dbData = row.data as any;
-        return {
-          id: row.id,
-          name: dbData.companyName || (dbData.ships ? dbData.ships[0]?.shipName : dbData.shipName) || row.id
-        };
+      const parsed = data
+        .filter(row => !(row.data as any)?.deleted)
+        .map(row => {
+          const dbData = row.data as any;
+          return {
+            id: row.id,
+            name: dbData.companyName || (dbData.ships ? dbData.ships[0]?.shipName : dbData.shipName) || row.id
+          };
       });
       setCrews(parsed);
     }
@@ -142,19 +144,6 @@ export function Lobby({ onJoin }: { onJoin: (id: string) => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '10px', marginBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <h2 style={{ margin: 0 }}>ACTIVE TERMINALS</h2>
-              <button onClick={async () => {
-                if (!window.confirm('CRITICAL WARNING: This will permanently wipe all registered companies and crews from the global database. Proceed?')) return;
-                setLoading(true);
-                const { data } = await supabase.from('ship_state').select('id');
-                if (data) {
-                  for (const row of data) {
-                    await supabase.from('ship_state').delete().eq('id', row.id);
-                  }
-                }
-                fetchCrews();
-              }} style={{ padding: '2px 5px', fontSize: '0.7rem', color: '#ff5555', borderColor: '#ff5555', background: 'transparent' }}>
-                [ NUKE DATABASE ]
-              </button>
             </div>
             <button onClick={() => setShowRegister(true)} style={{ padding: '5px 15px' }}>+ REGISTER CREW</button>
           </div>
