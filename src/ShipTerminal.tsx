@@ -26,6 +26,12 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   const [activeSubShipId, setActiveSubShipId] = useState<string>('');
   const activeShip = companyData?.ships?.find(s => s.id === activeSubShipId) || companyData?.ships?.[0];
 
+  useEffect(() => {
+    if ((companyData as any)?.deleted || companyData?.ships?.[0]?.deleted) {
+      onExit();
+    }
+  }, [companyData, onExit]);
+
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const [refereeView, setRefereeView] = useState(() => localStorage.getItem('refereeView') === 'true');
   const [mapUrl, setMapUrl] = useState(() => localStorage.getItem('astrogationMapUrl') || 'https://travellermap.com/?forceui=1');
@@ -189,8 +195,8 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
           )}
 
           <div style={{ marginBottom: '15px', padding: '10px', border: '1px solid var(--color-phosphor)', background: 'rgba(0,0,0,0.5)' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>{activeShip ? activeShip.shipName.toUpperCase() : 'UNKNOWN'} BALANCE</p>
-            <p style={{ margin: 0, fontSize: '1.2rem' }}>Cr {activeShip ? activeShip.credits.toLocaleString() : 0}</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-phosphor-dim)' }}>{activeShip?.shipName ? activeShip.shipName.toUpperCase() : 'UNKNOWN'} BALANCE</p>
+            <p style={{ margin: 0, fontSize: '1.2rem' }}>Cr {activeShip?.credits ? activeShip.credits.toLocaleString() : 0}</p>
           </div>
 
           <button onClick={() => { setActiveTab('characters'); audioService.playClick(); }}>
