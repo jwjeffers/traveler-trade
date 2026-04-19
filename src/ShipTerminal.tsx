@@ -27,7 +27,7 @@ export function ShipTerminal({ shipId, onExit }: { shipId: string, onExit: () =>
   const activeShip = companyData?.ships?.find(s => s.id === activeSubShipId) || companyData?.ships?.[0];
 
   useEffect(() => {
-    if ((companyData as any)?.deleted || companyData?.ships?.[0]?.deleted) {
+    if ((companyData as any)?.deleted || (companyData?.ships?.[0] as any)?.deleted) {
       onExit();
     }
   }, [companyData, onExit]);
