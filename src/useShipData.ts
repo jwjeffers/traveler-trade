@@ -10,8 +10,9 @@ export function useShipData(shipId: string) {
       try {
         const parsed = JSON.parse(saved);
         if (!parsed.ships) {
-           return { passcode: parsed.passcode || '0000', crewRoster: parsed.crewRoster || [], ships: [ { ...parsed, id: 'legacy-ship' } ] };
+           return { passcode: parsed.passcode || '0000', crewRoster: parsed.crewRoster || [], ships: [ { ...defaultCompanyData.ships[0], ...parsed, id: 'legacy-ship' } ] };
         }
+        parsed.ships = parsed.ships.map((s: any) => ({ ...defaultCompanyData.ships[0], ...s }));
         return { ...defaultCompanyData, ...parsed };
       } catch(e) { return defaultCompanyData; }
     }
@@ -33,13 +34,14 @@ export function useShipData(shipId: string) {
         setIsOnline(true);
         let incoming = row.data as any;
         if (!incoming.ships) {
-           incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...incoming, id: 'legacy-ship' } ] };
+           incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...defaultCompanyData.ships[0], ...incoming, id: 'legacy-ship' } ] };
+        } else {
+           incoming.ships = incoming.ships.map((s: any) => ({ ...defaultCompanyData.ships[0], ...s }));
         }
-        setData(incoming);
-        localStorage.setItem('companyData', JSON.stringify(incoming));
+        setData({ ...defaultCompanyData, ...incoming });
+        localStorage.setItem('companyData', JSON.stringify({ ...defaultCompanyData, ...incoming }));
       } else if (error && error.code === 'PGRST116') {
-        await supabase.from('ship_state').insert({ id: shipId, data: defaultCompanyData });
-        setIsOnline(true);
+        setData({ ...defaultCompanyData, ...((row?.data as any) || {}), deleted: true } as any);
       }
     };
 
@@ -52,10 +54,12 @@ export function useShipData(shipId: string) {
     channelRef.current.on('broadcast', { event: 'state-update' }, (payload) => {
       let incoming = payload.payload.data;
       if (!incoming.ships) {
-          incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...incoming, id: 'legacy-ship' } ] };
+          incoming = { passcode: incoming.passcode || '0000', crewRoster: incoming.crewRoster || [], ships: [ { ...defaultCompanyData.ships[0], ...incoming, id: 'legacy-ship' } ] };
+      } else {
+          incoming.ships = incoming.ships.map((s: any) => ({ ...defaultCompanyData.ships[0], ...s }));
       }
-      setData(incoming);
-      localStorage.setItem('companyData', JSON.stringify(incoming));
+      setData({ ...defaultCompanyData, ...incoming });
+      localStorage.setItem('companyData', JSON.stringify({ ...defaultCompanyData, ...incoming }));
     }).subscribe((status) => {
       if (status === 'SUBSCRIBED') setIsOnline(true);
     });

@@ -28,7 +28,7 @@ export function CharacterSheet({ crew, updateCrew }: { crew: CrewMember, updateC
 
   const hydratedSkills = DEFAULT_SKILL_NAMES.map((name, i) => {
     const existing = (data.skills || []).find(s => s.name === name);
-    return existing || { id: name + '-' + i, name, level: 0 };
+    return existing || { id: name + '-' + i, name, level: '-' };
   });
 
   (data.skills || []).forEach(s => {
@@ -90,7 +90,10 @@ export function CharacterSheet({ crew, updateCrew }: { crew: CrewMember, updateC
             {hydratedSkills.map(s => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>{s.name}</span>
-                <input type="number" value={s.level} onChange={e => updateSkill(s.id, 'level', parseInt(e.target.value) || 0)} style={{ width: '40px', textAlign: 'center', border: '1px solid var(--color-phosphor-dim)' }} />
+                <select value={s.level} onChange={e => updateSkill(s.id, 'level', e.target.value === '-' ? '-' : parseInt(e.target.value))} style={{ width: '50px', textAlign: 'center', border: '1px solid var(--color-phosphor-dim)', background: 'var(--color-bg)', color: 'var(--color-phosphor)' }}>
+                  <option value="-">-</option>
+                  {[0, 1, 2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
             ))}
           </div>
@@ -110,8 +113,8 @@ export function CharacterSheet({ crew, updateCrew }: { crew: CrewMember, updateC
            <h3 style={{ margin: 0, color: 'var(--color-phosphor)', borderBottom: '1px solid var(--color-phosphor)', paddingBottom: '2px', marginTop: '20px' }}>TRAINING DETAILS</h3>
            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
              <div><label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Studied Skill:</label> <input type="text" value={data.trainingSkill} onChange={e => updateChar({ trainingSkill: e.target.value })} style={{ width: '100%', borderBottom: '1px dashed var(--color-phosphor-dim)' }} /></div>
-             <div><label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Completed Weeks:</label> <input type="text" value={data.trainingWeeks} onChange={e => updateChar({ trainingWeeks: e.target.value })} style={{ width: '100%', borderBottom: '1px dashed var(--color-phosphor-dim)' }} /></div>
-             <div><label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Completed Study Periods:</label> <input type="text" value={data.trainingPeriods} onChange={e => updateChar({ trainingPeriods: e.target.value })} style={{ width: '100%', borderBottom: '1px dashed var(--color-phosphor-dim)' }} /></div>
+             <div><label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Study Periods Completed:</label> <input type="text" value={data.trainingWeeks} onChange={e => updateChar({ trainingWeeks: e.target.value })} style={{ width: '100%', borderBottom: '1px dashed var(--color-phosphor-dim)' }} /></div>
+             <div><label style={{ fontSize: '0.8rem', color: 'var(--color-phosphor-dim)' }}>Study Periods Required:</label> <input type="text" value={data.trainingPeriods} onChange={e => updateChar({ trainingPeriods: e.target.value })} style={{ width: '100%', borderBottom: '1px dashed var(--color-phosphor-dim)' }} /></div>
            </div>
         </div>
       </div>

@@ -70,7 +70,7 @@ export interface CharacterData {
   int: number;
   edu: number;
   soc: number;
-  skills: { id: string; name: string; level: number }[];
+  skills: { id: string; name: string; level: number | string }[];
   equipment: string;
   weapons: string;
   armor: string;
