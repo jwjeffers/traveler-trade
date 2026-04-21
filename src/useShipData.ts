@@ -41,7 +41,7 @@ export function useShipData(shipId: string) {
         setData({ ...defaultCompanyData, ...incoming });
         localStorage.setItem('companyData', JSON.stringify({ ...defaultCompanyData, ...incoming }));
       } else if (error && error.code === 'PGRST116') {
-        setData({ ...defaultCompanyData, ...((row?.data as any) || {}), deleted: true } as any);
+        setData({ ...defaultCompanyData, deleted: true } as any);
       }
     };
 
